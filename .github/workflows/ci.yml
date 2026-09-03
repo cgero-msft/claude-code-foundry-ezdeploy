@@ -45,8 +45,14 @@ jobs:
           bash -n tests/engine-regression.sh
 
   engine-regression:
-    name: Fake-Azure engine regression
-    runs-on: windows-latest
+    name: Fake-Azure engine regression (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:
       - name: Check out repository
@@ -58,7 +64,7 @@ jobs:
           set -Eeuo pipefail
           command -v jq
           command -v tar
-          command -v pwsh.exe
+          command -v pwsh.exe || command -v pwsh
 
       - name: Run fake-Azure engine regression
         shell: bash

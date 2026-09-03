@@ -16,13 +16,20 @@ The regression suite requires:
 
 - PowerShell.
 - Node.js.
-- Git for Windows.
-- Git Bash with `jq` and `tar`.
+- Bash with `jq` and `tar`.
+- Git for Windows when running the Windows wrapper.
 
-Run the tests from the repository root:
+On Windows, run the tests from the repository root:
 
 ```powershell
 .\tests\run-regression.ps1
+```
+
+On Linux, run:
+
+```bash
+node tests/wizard-regression.js wizard/index.html
+bash tests/engine-regression.sh scripts/ezdeploy-engine.sh
 ```
 
 The engine regression suite uses a fake Azure CLI and must not make live Azure changes.
