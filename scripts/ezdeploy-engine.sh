@@ -151,15 +151,6 @@ validate_deployment_name() {
     die "Invalid deployment name '${deployment}'. Use 1-64 letters, numbers, periods, underscores, or hyphens."
 }
 
-family_capacity() {
-  case "$1" in
-    sonnet) printf '%s' "$SONNET_CAPACITY" ;;
-    haiku) printf '%s' "$HAIKU_CAPACITY" ;;
-    opus) printf '%s' "$OPUS_CAPACITY" ;;
-    *) die "Unsupported Claude model family '$1'." ;;
-  esac
-}
-
 parse_args() {
   while (($#)); do
     case "$1" in
@@ -277,7 +268,7 @@ resolve_model_requests() {
     family="$(model_family "$model")"
     existing=false
     for index in "${!MODEL_DEPLOYMENT_NAMES[@]}"; do
-      [[ "${MODEL_DEPLOYMENT_NAMES[$index]}" != "$deployment" ]] || existing=true
+      [[ "${MODEL_DEPLOYMENT_NAMES[$index],,}" != "${deployment,,}" ]] || existing=true
     done
     [[ "$existing" == false ]] ||
       die "Deployment ${deployment} was selected more than once. Use --deployment-name overrides for multiple versions of one model."
@@ -305,8 +296,9 @@ determine_family_default() {
     if [[ "${MODEL_FAMILIES[$index]}" == "$family" ]]; then
       [[ -n "$first" ]] || first="${MODEL_DEPLOYMENT_NAMES[$index]}"
       exact_selector="${MODEL_IDS[$index]}@${MODEL_REQUESTED_VERSIONS[$index]}"
-      if [[ -n "$requested" && "${MODEL_DEPLOYMENT_NAMES[$index]}" == "$requested" ]]; then
-        printf '%s' "$requested"
+      if [[ -n "$requested" &&
+            "${MODEL_DEPLOYMENT_NAMES[$index],,}" == "${requested,,}" ]]; then
+        printf '%s' "${MODEL_DEPLOYMENT_NAMES[$index]}"
         return
       fi
       if [[ -n "$requested" && "$exact_selector" == "$requested" ]]; then
@@ -430,19 +422,13 @@ normalize_catalog() {
 }
 
 catalog_model() {
-  local catalog="$1" model="$2" requested_version="${3:-}"
+  local catalog="$1" model="$2" requested_version="$3"
   jq -c --arg model "$model" --arg version "$requested_version" '
     [.[] |
       select(.name == $model) |
       select(((.lifecycleStatus // "") | ascii_downcase) != "deprecated")
     ] as $matches
-    | if $version != "" then
-        [$matches[] | select((.version | tostring) == $version)] | first // empty
-      else
-        (([$matches[] | select(.isDefaultVersion == true)] | sort_by(.version | tostring) | last)
-          // ($matches | sort_by(.version | tostring) | last)
-          // empty)
-      end
+    | [$matches[] | select((.version | tostring) == $version)] | first // empty
   ' <<<"$catalog"
 }
 
@@ -469,7 +455,7 @@ load_existing_deployments() {
 
 validate_selected_models() {
   local index model requested_version deployment requested definition version format sku_definition usage_name
-  local existing existing_model existing_format existing_version existing_sku existing_capacity
+  local existing_matches existing_match_count existing existing_model existing_format existing_version existing_sku existing_capacity
   local additional publisher hosting quota_known
 
   MODEL_DEFINITIONS=()
@@ -486,10 +472,17 @@ validate_selected_models() {
     requested_version="${MODEL_REQUESTED_VERSIONS[$index]}"
     deployment="${MODEL_DEPLOYMENT_NAMES[$index]}"
     requested="${MODEL_CAPACITIES[$index]}"
-    existing="$(jq -c --arg deployment "$deployment" \
-      '[.[] | select(.name == $deployment)][0] // empty' <<<"$DEPLOYMENTS_JSON")"
+    existing_matches="$(jq -c --arg deployment "$deployment" \
+      '[.[] | select(((.name // "") | ascii_downcase) == ($deployment | ascii_downcase))]' \
+      <<<"$DEPLOYMENTS_JSON")"
+    existing_match_count="$(jq -r 'length' <<<"$existing_matches")"
+    ((existing_match_count <= 1)) ||
+      die "Multiple existing deployments differ only by case for requested name ${deployment}; resolve the ambiguity in Azure before rerunning."
+    existing="$(jq -c '.[0] // empty' <<<"$existing_matches")"
     version="$requested_version"
     if [[ -n "$existing" ]]; then
+      deployment="$(jq -r '.name' <<<"$existing")"
+      MODEL_DEPLOYMENT_NAMES[$index]="$deployment"
       existing_model="$(jq -r '.properties.model.name // empty' <<<"$existing")"
       existing_format="$(jq -r '.properties.model.format // empty' <<<"$existing")"
       existing_version="$(jq -r '.properties.model.version // empty | tostring' <<<"$existing")"
@@ -498,7 +491,7 @@ validate_selected_models() {
         die "Deployment-name collision: ${deployment} currently targets ${existing_model}, not ${model}."
       [[ "$existing_sku" == "$SKU" ]] ||
         die "Deployment ${deployment} uses SKU ${existing_sku}; refusing to replace it with ${SKU}."
-      [[ -z "$requested_version" || "$existing_version" == "$requested_version" ]] ||
+      [[ "$existing_version" == "$requested_version" ]] ||
         die "Deployment ${deployment} uses ${model} version ${existing_version}; refusing to replace it with version ${requested_version}."
       version="$existing_version"
     fi
@@ -552,6 +545,10 @@ validate_selected_models() {
     hosting="$(jq -r '.hostingType // .hostingModel // .inferenceContainerProperties.hostingType // "review model card"' <<<"$definition")"
     ok "${deployment}: ${model} version ${version}, ${SKU}, quota ${usage_name}, publisher ${publisher}, hosting ${hosting}."
   done
+
+  DEFAULT_SONNET_MODEL="$(determine_family_default sonnet "$DEFAULT_SONNET_MODEL")"
+  DEFAULT_HAIKU_MODEL="$(determine_family_default haiku "$DEFAULT_HAIKU_MODEL")"
+  DEFAULT_OPUS_MODEL="$(determine_family_default opus "$DEFAULT_OPUS_MODEL")"
 }
 
 check_quota() {
@@ -610,20 +607,23 @@ print_choices() {
   else
     local_auth_action="disable on new account (Entra-only default)"
   fi
-  cat <<EOF
+  cat <<'EOF'
 
 Deployment choices
-  Subscription:       ${SUBSCRIPTION}
-  Tenant:             ${TENANT_ID}
-  Resource group:     ${RESOURCE_GROUP}
-  Region:             ${LOCATION}
-  Foundry account:    ${ACCOUNT_NAME}
-  Foundry project:    ${PROJECT_NAME}
-  Deployment SKU:    ${SKU}
-  Assign current user:${ASSIGN_CURRENT_USER}
-  Local authentication:${local_auth_action}
-  Legal entity:       ${ORGANIZATION_NAME}
-  Country / industry: ${COUNTRY_CODE} / ${INDUSTRY}
+EOF
+  printf '  %-21s %s\n' \
+    "Subscription:" "$SUBSCRIPTION" \
+    "Tenant:" "$TENANT_ID" \
+    "Resource group:" "$RESOURCE_GROUP" \
+    "Region:" "$LOCATION" \
+    "Foundry account:" "$ACCOUNT_NAME" \
+    "Foundry project:" "$PROJECT_NAME" \
+    "Deployment SKU:" "$SKU" \
+    "Assign current user:" "$ASSIGN_CURRENT_USER" \
+    "Local authentication:" "$local_auth_action" \
+    "Legal entity:" "$ORGANIZATION_NAME" \
+    "Country / industry:" "${COUNTRY_CODE} / ${INDUSTRY}"
+  cat <<'EOF'
   Models:
 EOF
   for index in "${!MODEL_IDS[@]}"; do
