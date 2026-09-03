@@ -1,0 +1,45 @@
+# Wizard-generated Cloud Shell launchers
+/claude-code-foundry-dry-run.sh
+/claude-code-foundry-deploy.sh
+
+# Engine-generated workstation package
+/claude-code-foundry/
+/claude-code-foundry.tar.gz
+claude-foundry.env
+claude-foundry.ps1
+deployment-report*.json
+vscode-settings.snippet.json
+install-claude-code-local.sh
+install-claude-code-windows.ps1
+
+# Generated environment and activation files
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Generated archives, payloads, and reports
+*.tar
+*.tar.gz
+*.tgz
+*.payload.json
+*-payload.json
+/payloads/
+*.report.json
+/reports/
+
+# Local test output and temporary artifacts
+/generated-package/
+/test-results/
+/.tmp/
+/tmp/
+/fake-bin/
+ezdeploy-regression.*
+*.tmp
+*.temp
+
+# Common local metadata
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

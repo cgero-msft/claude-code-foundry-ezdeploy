@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>EZDeploy Claude Code on Microsoft Foundry</title>
+  <script>
+    (() => {
+      const param = new URLSearchParams(window.location.search).get("scoutTheme");
+      const theme =
+        param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+  <style>
+    :root {
+      color-scheme: light;
+      --cp-bg: #f7f4ef;
+      --cp-bg-elevated: #fcfbf8;
+      --cp-surface: #ffffff;
+      --cp-surface-soft: #f5f5f5;
+      --cp-border: #dedede;
+      --cp-border-strong: #919191;
+      --cp-text: #242424;
+      --cp-text-muted: #5c5c5c;
+      --cp-text-soft: #6f6f6f;
+      --cp-accent: #b11f4b;
+      --cp-accent-hover: #9a1a41;
+      --cp-accent-soft: rgba(177, 31, 75, 0.08);
+      --cp-accent-fg: #ffffff;
+      --cp-success: #16a34a;
+      --cp-danger: #dc2626;
+      --cp-warning: #f59e0b;
+      --cp-link: #0078d4;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+      --cp-overlay: rgba(255, 255, 255, 0.8);
+      --cp-panel: rgba(255, 255, 255, 0.86);
+      --cp-panel-strong: rgba(255, 255, 255, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.55);
+      --cp-highlight: rgba(177, 31, 75, 0.12);
+    }
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --cp-bg: #3d3b3a;
+      --cp-bg-elevated: #343231;
+      --cp-surface: #292929;
+      --cp-surface-soft: #2e2e2e;
+      --cp-border: #474747;
+      --cp-border-strong: #5f5f5f;
+      --cp-text: #dedede;
+      --cp-text-muted: #919191;
+      --cp-text-soft: #b0b0b0;
+      --cp-accent: #fd8ea1;
+      --cp-accent-hover: #fb7b91;
+      --cp-accent-soft: rgba(253, 142, 161, 0.14);
+      --cp-accent-fg: #1a1a1a;
+      --cp-success: #4ade80;
+      --cp-danger: #f87171;
+      --cp-warning: #fbbf24;
+      --cp-link: #4da6ff;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+      --cp-overlay: rgba(41, 41, 41, 0.88);
+      --cp-panel: rgba(41, 41, 41, 0.72);
+      --cp-panel-strong: rgba(41, 41, 41, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.04);
+      --cp-highlight: rgba(253, 142, 161, 0.12);
+    }
+    *{box-sizing:border-box} body{margin:0;background:var(--cp-bg);color:var(--cp-text);font:14px "Segoe UI",Aptos,Calibri,-apple-system,BlinkMacSystemFont,sans-serif}
+    button,input,select{font:inherit} button{cursor:pointer} code,pre{font-family:Consolas,"Courier New",Courier,monospace}
+    header{height:52px;display:flex;align-items:center;gap:14px;padding:0 22px;background:var(--cp-surface);border-bottom:1px solid var(--cp-border);position:sticky;top:0;z-index:5}
+    .brand{font-weight:650;font-size:15px}.badge,.tag{border:1px solid var(--cp-border);border-radius:.625rem;padding:3px 8px;color:var(--cp-text-muted);font-size:11px}.spacer{flex:1}
+    .layout{display:grid;grid-template-columns:240px 1fr;min-height:calc(100vh - 52px)} aside{padding:22px 14px;background:var(--cp-bg-elevated);border-right:1px solid var(--cp-border)}
+    aside strong{display:block;margin:0 10px 12px;font-size:11px;text-transform:uppercase;color:var(--cp-text-muted)}
+    .nav{width:100%;display:flex;align-items:center;gap:9px;border:0;background:transparent;color:var(--cp-text);padding:10px;border-radius:.625rem;text-align:left}
+    .nav.active{background:var(--cp-surface);color:var(--cp-link);box-shadow:inset 3px 0 0 var(--cp-link)}.num{width:24px;height:24px;border:1px solid var(--cp-border);border-radius:50%;display:grid;place-items:center}
+    .page{max-width:1040px;margin:auto;padding:36px 40px 70px}.crumb{font-size:12px;color:var(--cp-text-muted);margin-bottom:14px}h1{font-size:30px;margin:0 0 8px}h2{font-size:21px;margin:0 0 7px}h3{margin:0 0 5px;font-size:15px}p{margin:0;color:var(--cp-text-muted);line-height:1.55}
+    .panel,.model-card{background:var(--cp-surface);border:1px solid var(--cp-border);border-radius:16px;box-shadow:0 0 2px var(--cp-border),0 1px 2px var(--cp-border)}
+    .panel{padding:22px;margin-top:22px}.step{display:none}.step.active{display:block}
+    .model-list{display:grid;gap:12px;margin-top:18px}.model-card{padding:16px;min-width:0}.model-card.selected{border-color:var(--cp-accent);box-shadow:inset 0 0 0 1px var(--cp-accent);background:var(--cp-accent-soft)}
+    .model-heading{display:flex;align-items:flex-start;gap:10px}.model-heading input{width:auto;margin-top:3px}.model-title{min-width:0;flex:1}.model-title code{overflow-wrap:anywhere}.model-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+    .model-controls{display:grid;grid-template-columns:minmax(120px,160px) minmax(210px,1fr) minmax(210px,1fr);gap:14px;margin-top:14px;padding-top:14px;border-top:1px solid var(--cp-border)}.model-controls input[type="radio"]{width:auto;margin-right:6px}.default-label{display:flex;align-items:center;font-weight:600;margin:28px 0 0}
+    .fields{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px}.full{grid-column:1/-1}label{font-weight:600;display:block;margin-bottom:6px}
+    input,select{width:100%;padding:9px 10px;border:1px solid var(--cp-border-strong);border-radius:.625rem;background:var(--cp-surface);color:var(--cp-text)}.hint{font-size:12px;color:var(--cp-text-soft);margin-top:5px}
+    .checkline{display:flex;align-items:flex-start;gap:9px;font-weight:400;line-height:1.45}.checkline input{width:auto;margin-top:3px;flex:0 0 auto}
+    .notice{margin-top:18px;padding:13px 15px;background:var(--cp-surface-soft);border-left:4px solid var(--cp-warning);border-radius:.625rem}.notice b{display:block;margin-bottom:3px}
+    .actions{display:flex;justify-content:space-between;gap:10px;margin-top:22px;flex-wrap:wrap;min-width:0}.right{display:flex;gap:9px;flex-wrap:wrap;min-width:0}.btn{padding:8px 15px;border:1px solid var(--cp-border-strong);border-radius:.625rem;background:var(--cp-surface);color:var(--cp-text);font-weight:600;white-space:normal}.btn.primary{background:var(--cp-accent);border-color:var(--cp-accent);color:var(--cp-accent-fg)}.btn:disabled{opacity:.4}
+    .summary{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0}.summary div{padding:12px;background:var(--cp-surface-soft);border-radius:.625rem}.summary small{display:block;color:var(--cp-text-muted);text-transform:uppercase}.summary span{display:block;margin-top:4px;font-weight:600;overflow-wrap:anywhere}
+    .review-models{display:grid;gap:10px;margin:18px 0}.review-model{padding:14px;background:var(--cp-surface-soft);border-radius:.625rem}.review-model h3{overflow-wrap:anywhere}.review-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px}.review-grid small{display:block;color:var(--cp-text-muted);text-transform:uppercase}.review-grid span{display:block;margin-top:3px;overflow-wrap:anywhere}
+    pre{max-width:100%;padding:15px;background:var(--cp-bg-elevated);border:1px solid var(--cp-border);border-radius:.625rem;white-space:pre-wrap;overflow:auto;overflow-wrap:anywhere;font-size:12px}
+    @media(max-width:800px){.layout{grid-template-columns:1fr}aside{display:none}.page{padding:25px 18px;min-width:0}.fields,.summary,.model-controls,.review-grid{grid-template-columns:1fr}.full{grid-column:auto}.default-label{margin-top:0}.right{width:100%}.right .btn{flex:1 1 180px}}
+  </style>
+</head>
+<body>
+  <header><span class="brand">Microsoft Foundry</span><span class="badge">EZDeploy preview</span><span class="spacer"></span><span>Claude Code</span></header>
+  <div class="layout">
+    <aside><strong>Deployment setup</strong>
+      <button class="nav active" data-go="0"><span class="num">1</span>Models</button>
+      <button class="nav" data-go="1"><span class="num">2</span>Azure target</button>
+      <button class="nav" data-go="2"><span class="num">3</span>Provider details</button>
+      <button class="nav" data-go="3"><span class="num">4</span>Claude Code defaults</button>
+      <button class="nav" data-go="4"><span class="num">5</span>Review</button>
+    </aside>
+    <main><div class="page">
+      <div class="crumb">Build / Developer tools / Claude Code / EZDeploy</div>
+      <h1>Deploy Claude Code with Microsoft Foundry</h1>
+      <p>Work through the deployment choices, then download a populated launcher for Azure Cloud Shell. The generated files use Microsoft Entra authentication and contain no API keys.</p>
+      <div class="notice"><b>Unofficial project; review live Azure facts</b><p>This is an unofficial project and is not endorsed by or affiliated with Microsoft or Anthropic. Microsoft, Azure, Foundry, Anthropic, Claude, Sonnet, Haiku, and Opus are trademarks of their respective owners. Model availability, pricing, quota, hosting boundaries, and applicable terms are live Azure facts that you must review before deployment.</p></div>
+
+      <section class="step active" data-step="0"><div class="panel"><h2>Select exact model versions</h2><p>No billable model deployment is selected by default. Choose one or more catalog versions explicitly; recommended Sonnet, Haiku, and Opus starting points remain badged below. Checkboxes allow multiple versions, including multiple versions from the same Claude family.</p>
+        <div class="model-list" id="modelList"></div>
+        <div class="notice"><b>Version pinning and quota</b><p>Each selection becomes a distinct Global Standard deployment pinned with <code>NoAutoUpgrade</code>. The engine validates the exact version, version-specific quota pool, and requested capacity before deployment.</p></div>
+      </div></section>
+
+      <section class="step" data-step="1"><div class="panel"><h2>Select the Azure target</h2><p>Quota is scoped to subscription and region. The Foundry account name must be globally unique.</p>
+        <div class="fields">
+          <div class="full"><label for="subscription">Subscription ID or name</label><input id="subscription" placeholder="Your Azure subscription"></div>
+          <div><label for="resourceGroup">Resource group</label><input id="resourceGroup" placeholder="rg-claude-code"></div>
+          <div><label for="region">Region</label><select id="region"><option value="eastus2">East US 2</option><option value="swedencentral">Sweden Central</option></select><div class="hint">Restricted to the regions validated for this package and model matrix.</div></div>
+          <div><label for="accountName">Foundry account name</label><input id="accountName" placeholder="globally-unique-foundry-name"><div class="hint">Use 3-64 lowercase letters, numbers, or hyphens.</div></div>
+          <div><label for="projectName">Foundry project name</label><input id="projectName" value="claude-code"><div class="hint">Use 3-64 letters, numbers, underscores, periods, or hyphens.</div></div>
+          <div class="full"><label class="checkline"><input id="assignCurrentUser" type="checkbox">Assign the current signed-in user least-privilege Foundry runtime access when no supported inherited role is effective.</label><div class="hint">Creating this assignment requires role-assignment permission. The engine does not create a redundant assignment when inherited inference access already exists.</div></div>
+        </div>
+        <div class="notice"><b>Resources created or reused</b><p>One resource group, one AIServices Foundry account, one named Foundry project, and one deployment for each selected exact model version.</p></div>
+      </div></section>
+
+      <section class="step" data-step="2"><div class="panel"><h2>Provide Anthropic onboarding details</h2><p>Azure requires provider metadata for every Anthropic deployment.</p>
+        <div class="notice"><b>Use the responsible legal entity</b><p>These values are sent to Azure and Anthropic as model provider data.</p></div>
+        <div class="fields">
+          <div class="full"><label for="organization">Legal organization name</label><input id="organization" placeholder="Contoso Ltd."></div>
+          <div><label for="country">Country code</label><input id="country" placeholder="US" maxlength="2"><div class="hint">Two-letter ISO code.</div></div>
+          <div><label for="industry">Industry</label><select id="industry"><option value="technology">Technology</option><option value="finance">Finance</option><option value="healthcare">Healthcare</option><option value="education">Education</option><option value="retail">Retail</option><option value="manufacturing">Manufacturing</option><option value="government">Government</option><option value="media">Media</option><option value="other">Other</option></select></div>
+          <div class="full"><label class="checkline"><input id="acceptTerms" type="checkbox">I am authorized to approve billable Global Standard deployments and the applicable Anthropic Azure Marketplace commercial terms. I understand the Cloud Shell launcher will still require explicit interactive confirmation.</label></div>
+          <div class="full"><label class="checkline"><input id="acceptHosting" type="checkbox">I understand the hosting boundary shown for every selected exact version. Anthropic-hosted models process inference on Anthropic infrastructure; Azure-hosted versions process inference on Azure infrastructure. I will review the engine's live model-card output before approving deployment.</label></div>
+        </div>
+      </div></section>
+
+      <section class="step" data-step="3"><div class="panel"><h2>Confirm Claude Code defaults</h2><p>Claude Code routes Sonnet, Haiku, and Opus aliases to deployment names. When more than one selected version belongs to the same family, choose exactly one family default.</p>
+        <div class="summary" id="defaultSummary"></div>
+        <div class="notice"><b>At least one usable default is required</b><p>Every selected family must have one selected deployment mapped as its default. Families you do not deploy are omitted from the generated workstation configuration.</p></div>
+      </div></section>
+
+      <section class="step" data-step="4"><div class="panel"><h2>Review and download</h2><p>Upload the launcher and deployment engine to the same Cloud Shell folder.</p>
+        <div class="summary" id="summary"></div><div class="review-models" id="reviewModels"></div><pre id="preview"></pre>
+        <div class="actions"><button class="btn" id="copy">Copy command</button><div class="right"><button class="btn" id="dry">Download dry-run launcher</button><button class="btn primary" id="deploy">Download deployment launcher</button></div></div>
+      </div></section>
+
+      <div class="actions"><button class="btn" id="back" disabled>Back</button><button class="btn primary" id="next">Continue</button></div>
+    </div></main>
+  </div>
+  <script>
+    const engine="scripts/ezdeploy-engine.sh";
+    const modelMetadata={
+      "sonnet-5-v2":{family:"sonnet",label:"Claude Sonnet 5",model:"claude-sonnet-5",version:"2",deployment:"claude-sonnet-5",hosting:"Azure infrastructure",regions:["eastus2","swedencentral"],recommended:true},
+      "sonnet-5-v1":{family:"sonnet",label:"Claude Sonnet 5",model:"claude-sonnet-5",version:"1",deployment:"claude-sonnet-5-v1",hosting:"Anthropic infrastructure",regions:["eastus2","swedencentral"]},
+      "sonnet-4-6-v1":{family:"sonnet",label:"Claude Sonnet 4.6",model:"claude-sonnet-4-6",version:"1",deployment:"claude-sonnet-4-6",hosting:"Anthropic infrastructure",regions:["eastus2","swedencentral"]},
+      "sonnet-4-5-20250929":{family:"sonnet",label:"Claude Sonnet 4.5",model:"claude-sonnet-4-5",version:"20250929",deployment:"claude-sonnet-4-5",hosting:"Anthropic infrastructure",regions:["eastus2","swedencentral"]},
+      "haiku-4-5-v2":{family:"haiku",label:"Claude Haiku 4.5",model:"claude-haiku-4-5",version:"2",deployment:"claude-haiku-4-5",hosting:"Azure infrastructure",regions:["eastus2","swedencentral"],recommended:true},
+      "haiku-4-5-20251001":{family:"haiku",label:"Claude Haiku 4.5",model:"claude-haiku-4-5",version:"20251001",deployment:"claude-haiku-4-5-20251001",hosting:"Anthropic infrastructure",regions:["eastus2","swedencentral"]},
+      "opus-4-8-v2":{family:"opus",label:"Claude Opus 4.8",model:"claude-opus-4-8",version:"2",deployment:"claude-opus-4-8",hosting:"Azure infrastructure",regions:["eastus2","swedencentral"],recommended:true},
+      "opus-4-8-v1":{family:"opus",label:"Claude Opus 4.8",model:"claude-opus-4-8",version:"1",deployment:"claude-opus-4-8-v1",hosting:"Anthropic infrastructure",regions:["eastus2","swedencentral"]},
+      "opus-5-v2":{family:"opus",label:"Claude Opus 5",model:"claude-opus-5",version:"2",deployment:"claude-opus-5",hosting:"Azure infrastructure",regions:["eastus2","swedencentral"]},
+      "opus-5-v1":{family:"opus",label:"Claude Opus 5",model:"claude-opus-5",version:"1",deployment:"claude-opus-5-v1",hosting:"Anthropic infrastructure",regions:["eastus2","swedencentral"]},
+      "opus-4-7-v1":{family:"opus",label:"Claude Opus 4.7",model:"claude-opus-4-7",version:"1",deployment:"claude-opus-4-7",hosting:"Anthropic infrastructure",regions:["eastus2","swedencentral"]},
+      "opus-4-6-v1":{family:"opus",label:"Claude Opus 4.6",model:"claude-opus-4-6",version:"1",deployment:"claude-opus-4-6",hosting:"Anthropic infrastructure",regions:["eastus2","swedencentral"]},
+      "opus-4-5-20251101":{family:"opus",label:"Claude Opus 4.5",model:"claude-opus-4-5",version:"20251101",deployment:"claude-opus-4-5",hosting:"Anthropic infrastructure",regions:["eastus2","swedencentral"]}
+    };
+    let step=0;
+    const $=id=>document.getElementById(id), val=id=>$(id).value.trim();
+    const quote=s=>"'"+String(s).replaceAll("'","'\"'\"'")+"'";
+    const selectedModels=()=>[...document.querySelectorAll(".model-check:checked")].map(input=>{
+      const meta=modelMetadata[input.dataset.key];
+      return{...meta,key:input.dataset.key,capacity:val(`capacity-${input.dataset.key}`),deployment:val(`deployment-${input.dataset.key}`)}
+    });
+    const defaultModels=()=>Object.fromEntries(["sonnet","haiku","opus"].map(family=>{
+      const input=document.querySelector(`input[name="default-${family}"]:checked:not(:disabled)`);
+      return[family,input?selectedModels().find(model=>model.key===input.value)||null:null]
+    }));
+    const data=()=>({subscription:val("subscription"),rg:val("resourceGroup"),region:val("region"),account:val("accountName"),project:val("projectName"),assignCurrentUser:$("assignCurrentUser").checked,org:val("organization"),country:val("country").toUpperCase(),industry:val("industry"),acceptTerms:$("acceptTerms").checked,acceptHosting:$("acceptHosting").checked,models:selectedModels(),defaults:defaultModels()});
+    function validate(n){
+      const d=data();
+      if(n===0){
+        if(!d.models.length)return"Select at least one exact model version.";
+        if(d.models.some(model=>!(+model.capacity>0&&Number.isInteger(+model.capacity))))return"Use a positive whole-number capacity for every selected model version.";
+        if(d.models.some(model=>model.deployment.length>64||!/^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$/.test(model.deployment)))return"Use a valid 1-64 character deployment name for every selected model version.";
+        const deploymentNames=d.models.map(model=>model.deployment.toLowerCase());
+        if(new Set(deploymentNames).size!==deploymentNames.length)return"Use a unique deployment name for every selected exact model version.";
+      }
+      if(n===1){
+        if(!d.subscription||!d.rg||!/^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/.test(d.account)||!/^[A-Za-z0-9][A-Za-z0-9_.-]{1,62}[A-Za-z0-9]$/.test(d.project))return"Complete the Azure target and use valid account and project names.";
+        if(!["eastus2","swedencentral"].includes(d.region)||d.models.some(model=>!model.regions.includes(d.region)))return"The selected exact versions are not supported in this package region.";
+      }
+      if(n===2&&(!d.org||!/^[A-Z]{2}$/.test(d.country)||!d.acceptTerms||!d.acceptHosting))return"Enter the legal organization and country code, then acknowledge the Marketplace terms and hosting boundaries.";
+      if(n===3){
+        const selectedFamilies=new Set(d.models.map(model=>model.family));
+        for(const family of selectedFamilies){
+          const mapped=d.defaults[family];
+          if(!mapped||!d.models.some(model=>model.key===mapped.key))return`Choose a Claude Code ${family} default from the selected versions.`;
+        }
+      }
+      return""
+    }
+    function validateThrough(lastStep){
+      for(let index=0;index<=lastStep;index++){
+        const error=validate(index);
+        if(error)return{index,error}
+      }
+      return null
+    }
+    function ensureComplete(){
+      const failure=validateThrough(3);
+      if(!failure)return true;
+      alert(failure.error);
+      show(failure.index,true);
+      return false
+    }
+    function command(dry=false,engineTarget=quote(engine)){
+      const d=data(),a=["bash",engineTarget,"--subscription",quote(d.subscription),"--resource-group",quote(d.rg),"--location",quote(d.region),"--account-name",quote(d.account),"--project-name",quote(d.project),"--organization-name",quote(d.org),"--country-code",quote(d.country),"--industry",quote(d.industry),"--sku",quote("GlobalStandard")];
+      d.models.forEach(model=>{
+        a.push("--model",quote([model.model,model.version,model.deployment,model.capacity].join(":")))
+      });
+      Object.entries(d.defaults).forEach(([family,model])=>{if(model)a.push(`--default-${family}-model`,quote(model.deployment))});
+      if(d.assignCurrentUser)a.push("--assign-current-user");
+      a.push("--output-dir",'"${HOME}/claude-code-foundry"');
+      if(dry)a.push("--dry-run");
+      return a.join(" \\\n  ")
+    }
+    function launcher(dry){return`#!/usr/bin/env bash\nset -Eeuo pipefail\nhere="$(cd -- "$(dirname -- "\${BASH_SOURCE[0]}")" && pwd)"\nengine="\${here}/${engine}"\n[[ -f "\${engine}" ]] || engine="\${here}/ezdeploy-engine.sh"\n\n${command(dry,'"${engine}"')}\n`}
+    function show(n,validated=false){
+      const target=Math.max(0,Math.min(4,n));
+      if(!validated&&target>step){
+        const failure=validateThrough(target-1);
+        if(failure){alert(failure.error);n=failure.index}
+      }
+      step=Math.max(0,Math.min(4,n));
+      document.querySelectorAll(".step").forEach((element,index)=>element.classList.toggle("active",index===step));
+      document.querySelectorAll(".nav").forEach((element,index)=>element.classList.toggle("active",index===step));
+      $("back").disabled=step===0;
+      $("next").style.display=step===4?"none":"";
+      if(step===3)renderDefaults();
+      if(step===4){
+        if(!ensureComplete())return;
+        review()
+      }
+      window.scrollTo(0,0)
+    }
+    function renderDefaults(){
+      const d=data();
+      const families=["sonnet","haiku","opus"].map(family=>{
+        const models=d.models.filter(model=>model.family===family);
+        if(!models.length)return[family,"Not deployed"];
+        const mapped=d.defaults[family];
+        return[family,mapped?`${mapped.label} @ ${mapped.version} (${mapped.deployment})`:"Choose a selected default"]
+      });
+      $("defaultSummary").innerHTML=families.map(([family,value])=>`<div><small>${escape(family)} default</small><span>${escape(value)}</span></div>`).join("")
+    }
+    function review(){
+      const d=data(),defaultText=Object.entries(d.defaults).filter(([,model])=>model).map(([family,model])=>`${family}: ${model.deployment}`).join(" · ");
+      const items=[["Selected versions",String(d.models.length)],["Target",`${d.subscription} / ${d.region}`],["Resource",`${d.rg} / ${d.account} / ${d.project}`],["Provider",`${d.org} (${d.country}, ${d.industry})`],["Claude Code defaults",defaultText],["Current-user RBAC",d.assignCurrentUser?"Assign if needed":"Do not assign"],["Marketplace terms","Acknowledged"],["Hosting boundaries",[...new Set(d.models.map(model=>model.hosting))].join(" + ")]];
+      $("summary").innerHTML=items.map(([label,value])=>`<div><small>${escape(label)}</small><span>${escape(value)}</span></div>`).join("");
+      $("reviewModels").innerHTML=d.models.map(model=>`<div class="review-model"><h3>${escape(model.family)} · ${escape(model.model)} @ ${escape(model.version)}</h3><div class="review-grid"><div><small>Deployment name</small><span>${escape(model.deployment)}</span></div><div><small>Hosting boundary</small><span>${escape(model.hosting)}</span></div><div><small>SKU / capacity</small><span>GlobalStandard / ${escape(model.capacity)}</span></div></div></div>`).join("");
+      $("preview").textContent=command()
+    }
+    function escape(s){const e=document.createElement("span");e.textContent=s;return e.innerHTML}
+    function download(name,content){const url=URL.createObjectURL(new Blob([content],{type:"text/x-shellscript"})),anchor=document.createElement("a");anchor.href=url;anchor.download=name;anchor.click();setTimeout(()=>URL.revokeObjectURL(url),0)}
+    function fallbackCopy(text){
+      const textarea=document.createElement("textarea");
+      textarea.value=text;
+      document.body.appendChild(textarea);
+      textarea.select();
+      const copied=document.execCommand("copy");
+      textarea.remove();
+      if(!copied)throw new Error("Browser copy command was rejected.")
+    }
+    function syncModelSelection(input){
+      const card=document.querySelector(`[data-model-card="${input.dataset.key}"]`);
+      card.classList.toggle("selected",input.checked);
+      card.querySelector(".model-capacity").disabled=!input.checked;
+      card.querySelector(".deployment-name").disabled=!input.checked;
+      card.querySelectorAll(".default-model").forEach(radio=>radio.disabled=!input.checked);
+      const family=modelMetadata[input.dataset.key].family;
+      const enabled=[...document.querySelectorAll(`input[name="default-${family}"]:not(:disabled)`)];
+      if(enabled.length&&!enabled.some(radio=>radio.checked))enabled[0].checked=true;
+      renderDefaults()
+    }
+    function renderModelCards(){
+      $("modelList").innerHTML=Object.entries(modelMetadata).map(([key,model])=>{
+        const tag=model.recommended?'<span class="tag">Recommended Azure-hosted default</span>':"";
+        return`<article class="model-card" data-model-card="${escape(key)}"><div class="model-heading"><input class="model-check" id="model-${escape(key)}" type="checkbox" data-key="${escape(key)}"><label class="model-title" for="model-${escape(key)}"><h3>${escape(model.label)} @ ${escape(model.version)}</h3><p>Model <code>${escape(model.model)}</code></p></label></div><div class="model-meta"><span class="tag">${escape(model.family)} family</span><span class="tag">${escape(model.hosting)}</span><span class="tag">Package regions; live check required</span>${tag}</div><div class="model-controls"><div><label for="capacity-${escape(key)}">Capacity</label><input class="model-capacity" id="capacity-${escape(key)}" data-key="${escape(key)}" type="number" min="1" step="1" value="10" disabled></div><div><label for="deployment-${escape(key)}">Deployment name</label><input class="deployment-name" id="deployment-${escape(key)}" data-key="${escape(key)}" value="${escape(model.deployment)}" disabled></div><label class="default-label"><input class="default-model" type="radio" name="default-${escape(model.family)}" value="${escape(key)}" disabled>Claude Code ${escape(model.family)} default</label></div></article>`
+      }).join("")
+    }
+    renderModelCards();
+    document.querySelectorAll(".model-check").forEach(input=>input.addEventListener("change",()=>syncModelSelection(input)));
+    document.querySelectorAll(".default-model").forEach(input=>input.addEventListener("change",renderDefaults));
+    document.querySelectorAll(".nav").forEach((element,index)=>element.onclick=()=>show(index));
+    $("next").onclick=()=>{const error=validate(step);error?alert(error):show(step+1,true)};
+    $("back").onclick=()=>show(step-1,true);
+    $("dry").onclick=()=>{if(ensureComplete())download("claude-code-foundry-dry-run.sh",launcher(true))};
+    $("deploy").onclick=()=>{if(ensureComplete())download("claude-code-foundry-deploy.sh",launcher(false))};
+    $("copy").onclick=async()=>{
+      if(!ensureComplete())return;
+      try{
+        if(navigator.clipboard&&navigator.clipboard.writeText){
+          try{
+            await navigator.clipboard.writeText(command())
+          }catch(error){
+            fallbackCopy(command())
+          }
+        }else{
+          fallbackCopy(command())
+        }
+        $("copy").textContent="Copied";
+        setTimeout(()=>$("copy").textContent="Copy command",1200)
+      }catch(error){
+        alert(`Unable to copy the command: ${error.message}`)
+      }
+    };
+    renderDefaults();
+  </script>
+</body>
+</html>
