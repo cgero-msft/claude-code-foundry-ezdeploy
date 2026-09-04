@@ -5,6 +5,40 @@ Deploy the Azure resources and exact Claude model versions needed to use Claude 
 > [!IMPORTANT]
 > This is an unofficial community sample. It is not an official Microsoft or Anthropic product and is not supported under either company's product support commitments. Microsoft, Azure, Microsoft Foundry, Anthropic, Claude, and Claude Code are trademarks of their respective owners.
 
+## Quick start
+
+The full flow is five steps; each links to its detailed section below.
+
+1. Open [`wizard/index.html`](wizard/index.html) in a browser and select the Azure target and exact model versions, capacities, and Claude Code defaults. No sign-in or network access is required. See [Anonymous regional model catalog](#anonymous-regional-model-catalog).
+2. Download the generated dry-run and deployment launchers. See [Generate the launchers](#generate-the-launchers).
+3. Upload both launchers and `scripts/ezdeploy-engine.sh` to one Azure Cloud Shell folder and run the dry run to validate the live catalog, quota, and existing resources without changes. See [Run the dry run first](#run-the-dry-run-first).
+4. Run the deployment launcher, review the live preflight output, and type `ACCEPT`. See [Confirm and deploy](#confirm-and-deploy).
+5. Download the generated workstation package and run its installer to configure Claude Code. See [Generated workstation package](#generated-workstation-package) and [Verify Claude Code](#verify-claude-code).
+
+```mermaid
+flowchart LR
+    subgraph browser["Browser (anonymous, no network calls)"]
+        wizard["wizard/index.html<br>+ checked-in catalog snapshot"]
+    end
+    subgraph shell["Azure Cloud Shell (authenticated)"]
+        launcher["Generated launchers<br>dry run / deploy"]
+        engine["ezdeploy-engine.sh<br>live preflight + ACCEPT gate"]
+    end
+    subgraph azure["Azure subscription"]
+        resources["Foundry account and project<br>pinned model deployments"]
+    end
+    subgraph workstation["Workstation"]
+        pkg["claude-code-foundry.tar.gz<br>env activators + installers"]
+        claudecode["Claude Code<br>sonnet / haiku / opus aliases"]
+    end
+    wizard -- "download" --> launcher
+    launcher --> engine
+    engine -- "validates, then creates" --> resources
+    engine -- "generates" --> pkg
+    pkg -- "install + configure" --> claudecode
+    claudecode -- "Entra ID inference" --> resources
+```
+
 ## What this repository contains
 
 | Path | Purpose |
