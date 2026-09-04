@@ -68,7 +68,7 @@
     *{box-sizing:border-box} body{margin:0;background:var(--cp-bg);color:var(--cp-text);font:14px "Segoe UI",Aptos,Calibri,-apple-system,BlinkMacSystemFont,sans-serif}
     button,input,select{font:inherit} button{cursor:pointer} code,pre{font-family:Consolas,"Courier New",Courier,monospace}
     header{height:52px;display:flex;align-items:center;gap:14px;padding:0 22px;background:var(--cp-surface);border-bottom:1px solid var(--cp-border);position:sticky;top:0;z-index:5}
-    .brand{font-weight:650;font-size:15px}.badge,.tag{border:1px solid var(--cp-border);border-radius:.625rem;padding:3px 8px;color:var(--cp-text-muted);font-size:11px}.spacer{flex:1}
+    .brand{font-weight:650;font-size:15px}.badge,.tag{border:1px solid var(--cp-border);border-radius:.625rem;padding:3px 8px;color:var(--cp-text-muted);font-size:11px}.tag.azure-default{border-color:var(--cp-link);color:var(--cp-link)}.tag.recommended{border-color:var(--cp-accent);color:var(--cp-accent)}.tag.tested{border-color:var(--cp-success);color:var(--cp-success)}.tag.preview{border-color:var(--cp-warning);color:var(--cp-warning)}.spacer{flex:1}
     .layout{display:grid;grid-template-columns:240px 1fr;min-height:calc(100vh - 52px)} aside{padding:22px 14px;background:var(--cp-bg-elevated);border-right:1px solid var(--cp-border)}
     aside strong{display:block;margin:0 10px 12px;font-size:11px;text-transform:uppercase;color:var(--cp-text-muted)}
     .nav{width:100%;display:flex;align-items:center;gap:9px;border:0;background:transparent;color:var(--cp-text);padding:10px;border-radius:.625rem;text-align:left}
@@ -82,7 +82,7 @@
     .fields{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px}.full{grid-column:1/-1}label{font-weight:600;display:block;margin-bottom:6px}
     input,select{width:100%;padding:9px 10px;border:1px solid var(--cp-border-strong);border-radius:.625rem;background:var(--cp-surface);color:var(--cp-text)}.hint{font-size:12px;color:var(--cp-text-soft);margin-top:5px}
     .checkline{display:flex;align-items:flex-start;gap:9px;font-weight:400;line-height:1.45}.checkline input{width:auto;margin-top:3px;flex:0 0 auto}
-    .notice{margin-top:18px;padding:13px 15px;background:var(--cp-surface-soft);border-left:4px solid var(--cp-warning);border-radius:.625rem}.notice b{display:block;margin-bottom:3px}
+    .notice{margin-top:18px;padding:13px 15px;background:var(--cp-surface-soft);border-left:4px solid var(--cp-warning);border-radius:.625rem}.notice.prominent{border:2px solid var(--cp-warning);background:var(--cp-panel-strong)}.notice b{display:block;margin-bottom:3px}.notice a{color:var(--cp-link);font-weight:600}.hidden{display:none}
     .actions{display:flex;justify-content:space-between;gap:10px;margin-top:22px;flex-wrap:wrap;min-width:0}.right{display:flex;gap:9px;flex-wrap:wrap;min-width:0}.btn{padding:8px 15px;border:1px solid var(--cp-border-strong);border-radius:.625rem;background:var(--cp-surface);color:var(--cp-text);font-weight:600;white-space:normal}.btn.primary{background:var(--cp-accent);border-color:var(--cp-accent);color:var(--cp-accent-fg)}.btn:disabled{opacity:.4}
     .summary{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0}.summary div{padding:12px;background:var(--cp-surface-soft);border-radius:.625rem}.summary small{display:block;color:var(--cp-text-muted);text-transform:uppercase}.summary span{display:block;margin-top:4px;font-weight:600;overflow-wrap:anywhere}
     .review-models{display:grid;gap:10px;margin:18px 0}.review-model{padding:14px;background:var(--cp-surface-soft);border-radius:.625rem}.review-model h3{overflow-wrap:anywhere}.review-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px}.review-grid small{display:block;color:var(--cp-text-muted);text-transform:uppercase}.review-grid span{display:block;margin-top:3px;overflow-wrap:anywhere}
@@ -94,8 +94,8 @@
   <header><span class="brand">Microsoft Foundry</span><span class="badge">EZDeploy preview</span><span class="spacer"></span><span>Claude Code</span></header>
   <div class="layout">
     <aside><strong>Deployment setup</strong>
-      <button class="nav active" data-go="0"><span class="num">1</span>Models</button>
-      <button class="nav" data-go="1"><span class="num">2</span>Azure target</button>
+      <button class="nav active" data-go="0"><span class="num">1</span>Azure target</button>
+      <button class="nav" data-go="1"><span class="num">2</span>Models</button>
       <button class="nav" data-go="2"><span class="num">3</span>Provider details</button>
       <button class="nav" data-go="3"><span class="num">4</span>Claude Code defaults</button>
       <button class="nav" data-go="4"><span class="num">5</span>Review</button>
@@ -106,12 +106,7 @@
       <p>Work through the deployment choices, then download a populated launcher for Azure Cloud Shell. The generated files use Microsoft Entra authentication and contain no API keys.</p>
       <div class="notice"><b>Unofficial project; review live Azure facts</b><p>This is an unofficial project and is not endorsed by or affiliated with Microsoft or Anthropic. Microsoft, Azure, Foundry, Anthropic, Claude, Sonnet, Haiku, and Opus are trademarks of their respective owners. Model availability, pricing, quota, hosting boundaries, and applicable terms are live Azure facts that you must review before deployment.</p></div>
 
-      <section class="step active" data-step="0"><div class="panel"><h2>Select exact model versions</h2><p>No billable model deployment is selected by default. Choose one or more catalog versions explicitly; recommended Sonnet, Haiku, and Opus starting points remain badged below. Checkboxes allow multiple versions, including multiple versions from the same Claude family.</p>
-        <div class="model-list" id="modelList"></div>
-        <div class="notice"><b>Version pinning and quota</b><p>Each selection becomes a distinct Global Standard deployment pinned with <code>NoAutoUpgrade</code>. The engine validates the exact version, version-specific quota pool, and requested capacity before deployment.</p></div>
-      </div></section>
-
-      <section class="step" data-step="1"><div class="panel"><h2>Select the Azure target</h2><p>Quota is scoped to subscription and region. The Foundry account name must be globally unique.</p>
+      <section class="step active" data-step="0"><div class="panel"><h2>Select the Azure target</h2><p>The region controls which snapshot records are shown next. Quota and final eligibility remain specific to your subscription and are checked live by the engine.</p>
         <div class="fields">
           <div class="full"><label for="subscription">Subscription ID or name</label><input id="subscription" placeholder="Your Azure subscription"></div>
           <div><label for="resourceGroup">Resource group</label><input id="resourceGroup" placeholder="rg-claude-code"></div>
@@ -121,6 +116,16 @@
           <div class="full"><label class="checkline"><input id="assignCurrentUser" type="checkbox">Assign the current signed-in user least-privilege Foundry runtime access when no supported inherited role is effective.</label><div class="hint">Creating this assignment requires role-assignment permission. The engine does not create a redundant assignment when inherited inference access already exists.</div></div>
         </div>
         <div class="notice"><b>Resources created or reused</b><p>One resource group, one AIServices Foundry account, one named Foundry project, and one deployment for each selected exact model version.</p></div>
+      </div></section>
+
+      <section class="step" data-step="1"><div class="panel"><h2>Select exact model versions</h2><p>No billable model deployment is selected by default. This anonymous catalog is a checked-in snapshot from a reference subscription; your Cloud Shell dry run remains authoritative.</p>
+        <div class="notice prominent hidden" id="catalogStatus"><b id="catalogStatusTitle">Catalog warning</b><p id="catalogStatusMessage"></p></div>
+        <div class="fields">
+          <div class="full"><label class="checkline"><input id="includePreview" type="checkbox">Show Preview models. Preview entries remain unselected and require an explicit opt-in here before they appear.</label></div>
+        </div>
+        <div class="notice hidden" id="selectionNotice"><b>Selections reset</b><p id="selectionNoticeMessage"></p></div>
+        <div class="model-list" id="modelList"></div>
+        <div class="notice"><b>Version pinning and quota</b><p>Each selection becomes a distinct Global Standard deployment pinned with <code>NoAutoUpgrade</code>. The engine validates the exact version, regional SKU, version-specific quota pool, and requested incremental capacity before any mutation.</p><p><a id="reportCatalog" href="https://github.com/cgero-msft/claude-code-foundry-ezdeploy/issues/new" target="_blank" rel="noopener noreferrer">Report a stale or missing catalog entry</a>. This opens a prefilled issue; the anonymous wizard cannot trigger commits or refresh workflows.</p></div>
       </div></section>
 
       <section class="step" data-step="2"><div class="panel"><h2>Provide Anthropic onboarding details</h2><p>Azure requires provider metadata for every Anthropic deployment.</p>
@@ -147,30 +152,119 @@
       <div class="actions"><button class="btn" id="back" disabled>Back</button><button class="btn primary" id="next">Continue</button></div>
     </div></main>
   </div>
+  <script src="catalog/catalog.fallback.js"></script>
+  <script src="catalog/catalog.overlay.js"></script>
+  <script src="catalog/catalog.generated.js"></script>
   <script>
     const engine="scripts/ezdeploy-engine.sh";
-    const modelMetadata={
-      "sonnet-5-v2":{family:"sonnet",label:"Claude Sonnet 5",model:"claude-sonnet-5",version:"2",deployment:"claude-sonnet-5",hosting:"Azure infrastructure",regions:["eastus2","swedencentral"],recommended:true},
-      "sonnet-5-v1":{family:"sonnet",label:"Claude Sonnet 5",model:"claude-sonnet-5",version:"1",deployment:"claude-sonnet-5-v1",hosting:"Anthropic infrastructure",regions:["eastus2","swedencentral"]},
-      "sonnet-4-6-v1":{family:"sonnet",label:"Claude Sonnet 4.6",model:"claude-sonnet-4-6",version:"1",deployment:"claude-sonnet-4-6",hosting:"Anthropic infrastructure",regions:["eastus2","swedencentral"]},
-      "sonnet-4-5-20250929":{family:"sonnet",label:"Claude Sonnet 4.5",model:"claude-sonnet-4-5",version:"20250929",deployment:"claude-sonnet-4-5",hosting:"Anthropic infrastructure",regions:["eastus2","swedencentral"]},
-      "haiku-4-5-v2":{family:"haiku",label:"Claude Haiku 4.5",model:"claude-haiku-4-5",version:"2",deployment:"claude-haiku-4-5",hosting:"Azure infrastructure",regions:["eastus2","swedencentral"],recommended:true},
-      "haiku-4-5-20251001":{family:"haiku",label:"Claude Haiku 4.5",model:"claude-haiku-4-5",version:"20251001",deployment:"claude-haiku-4-5-20251001",hosting:"Anthropic infrastructure",regions:["eastus2","swedencentral"]},
-      "opus-4-8-v2":{family:"opus",label:"Claude Opus 4.8",model:"claude-opus-4-8",version:"2",deployment:"claude-opus-4-8",hosting:"Azure infrastructure",regions:["eastus2","swedencentral"],recommended:true},
-      "opus-4-8-v1":{family:"opus",label:"Claude Opus 4.8",model:"claude-opus-4-8",version:"1",deployment:"claude-opus-4-8-v1",hosting:"Anthropic infrastructure",regions:["eastus2","swedencentral"]},
-      "opus-5-v2":{family:"opus",label:"Claude Opus 5",model:"claude-opus-5",version:"2",deployment:"claude-opus-5",hosting:"Azure infrastructure",regions:["eastus2","swedencentral"]},
-      "opus-5-v1":{family:"opus",label:"Claude Opus 5",model:"claude-opus-5",version:"1",deployment:"claude-opus-5-v1",hosting:"Anthropic infrastructure",regions:["eastus2","swedencentral"]},
-      "opus-4-7-v1":{family:"opus",label:"Claude Opus 4.7",model:"claude-opus-4-7",version:"1",deployment:"claude-opus-4-7",hosting:"Anthropic infrastructure",regions:["eastus2","swedencentral"]},
-      "opus-4-6-v1":{family:"opus",label:"Claude Opus 4.6",model:"claude-opus-4-6",version:"1",deployment:"claude-opus-4-6",hosting:"Anthropic infrastructure",regions:["eastus2","swedencentral"]},
-      "opus-4-5-20251101":{family:"opus",label:"Claude Opus 4.5",model:"claude-opus-4-5",version:"20251101",deployment:"claude-opus-4-5",hosting:"Anthropic infrastructure",regions:["eastus2","swedencentral"]}
-    };
+    const requiredRegions=["eastus2","swedencentral"];
+    const catalogOverlay=window.EZDEPLOY_CATALOG_OVERLAY||{familyOrder:{},models:{}};
+    const curatedFallback=window.EZDEPLOY_CATALOG_FALLBACK;
+    const generatedSnapshot=window.EZDEPLOY_CATALOG_SNAPSHOT;
+    const modelMetadata={};
     let step=0;
     const $=id=>document.getElementById(id), val=id=>$(id).value.trim();
     const quote=s=>"'"+String(s).replaceAll("'","'\"'\"'")+"'";
+    function validRegionalMetadata(regional){
+      return regional&&typeof regional==="object"&&
+        ["GA","Preview"].includes(regional.lifecycle)&&
+        typeof regional.isDefaultVersion==="boolean"&&
+        regional.capabilities&&typeof regional.capabilities==="object"&&
+        (regional.capabilities.hostedOn===null||["azure","anthropic"].includes(regional.capabilities.hostedOn))&&
+        Array.isArray(regional.skus)&&regional.skus.some(sku=>
+          sku&&sku.name==="GlobalStandard"&&typeof sku.usageName==="string"&&sku.usageName
+        )
+    }
+    function validCatalogModel(model){
+      if(!model||typeof model!=="object"||typeof model.key!=="string"||!model.key||
+        typeof model.name!=="string"||!model.name||typeof model.version!=="string"||!model.version||
+        !["sonnet","haiku","opus"].includes(model.family)||
+        model.capabilities?.chatCompletion!==true||!model.regions||typeof model.regions!=="object")return false;
+      const supported=requiredRegions.filter(region=>model.regions[region]!==undefined);
+      return supported.length>0&&supported.every(region=>validRegionalMetadata(model.regions[region]))
+    }
+    function validCatalog(catalog,requireTimestamp=true){
+      if(!catalog||catalog.schemaVersion!==1||!Array.isArray(catalog.regions)||!Array.isArray(catalog.models)||!catalog.models.length)return false;
+      if(requireTimestamp&&!Number.isFinite(Date.parse(catalog.generatedAt)))return false;
+      if(requiredRegions.some(region=>!catalog.regions.includes(region)))return false;
+      if(!catalog.models.every(validCatalogModel))return false;
+      const keys=catalog.models.map(model=>model.key);
+      if(new Set(keys).size!==keys.length)return false;
+      return requiredRegions.every(region=>catalog.models.some(model=>
+        validRegionalMetadata(model.regions?.[region])
+      ))
+    }
+    function inferredName(model){
+      return model.name.split("-").map((part,index)=>index===0?"Claude":part.charAt(0).toUpperCase()+part.slice(1)).join(" ")
+    }
+    function hostingLabel(hostedOn){
+      if(hostedOn==="azure")return"Azure infrastructure";
+      if(hostedOn==="anthropic")return"Anthropic infrastructure";
+      return"hosting unavailable—verify during live preflight"
+    }
+    function loadCatalog(snapshot=generatedSnapshot,fallback=curatedFallback,overlay=catalogOverlay,now=Date.now()){
+      let fallbackUsed=!validCatalog(snapshot,true);
+      let source=fallbackUsed?fallback:snapshot;
+      if(!validCatalog(source,false))throw new Error("Both the generated model catalog and curated fallback are unavailable.");
+      const normalize=()=>source.models.map(model=>{
+          const curated=overlay.models?.[model.key]||{};
+          const id=curated.id||`${model.family}-${model.name.replace(/^claude-/,"")}-${model.version}`.replace(/[^a-z0-9-]/gi,"-").toLowerCase();
+          return{
+            key:id,
+            catalogKey:model.key,
+            family:model.family,
+            label:curated.friendlyName||inferredName(model),
+            model:model.name,
+            version:model.version,
+            deployment:curated.defaultDeploymentName||null,
+            recommended:curated.recommended===true,
+            tested:curated.tested===true,
+            order:Number.isFinite(curated.order)?curated.order:999,
+            familyOrder:Number.isFinite(overlay.familyOrder?.[model.family])?overlay.familyOrder[model.family]:999,
+            regions:Object.keys(model.regions).filter(region=>model.regions[region]?.skus?.some(sku=>sku.name==="GlobalStandard")),
+            regionMetadata:model.regions
+          }
+        }).sort((left,right)=>left.familyOrder-right.familyOrder||left.order-right.order||left.label.localeCompare(right.label)||right.version.localeCompare(left.version,undefined,{numeric:true}));
+      let models;
+      try{
+        models=normalize();
+        if(new Set(models.map(model=>model.key)).size!==models.length)throw new Error("duplicate model UI identifiers");
+      }catch(error){
+        if(fallbackUsed)throw error;
+        fallbackUsed=true;
+        source=fallback;
+        if(!validCatalog(source,false))throw new Error("Both the generated model catalog and curated fallback are unavailable.");
+        models=normalize();
+        if(new Set(models.map(model=>model.key)).size!==models.length)throw new Error("The curated fallback contains duplicate model UI identifiers.");
+      }
+      const generatedTime=Date.parse(source.generatedAt);
+      const ageMs=fallbackUsed?null:Math.max(0,now-generatedTime);
+      const ageDays=fallbackUsed?null:Math.max(0,Math.floor((now-generatedTime)/86400000));
+      return{models,fallbackUsed,generatedAt:source.generatedAt||null,ageDays,stale:ageMs!==null&&ageMs>7*86400000,warnings:Array.isArray(source.warnings)?source.warnings:[]}
+    }
+    const catalogState=loadCatalog();
+    const catalogModelsForRegion=(state,region,includePreview=false)=>state.models.flatMap(model=>{
+      const regional=model.regionMetadata?.[region];
+      if(!regional||(regional.lifecycle!=="GA"&&!(includePreview&&regional.lifecycle==="Preview")))return[];
+      return[{
+        ...model,
+        deployment:model.deployment||(regional.isDefaultVersion?model.model:`${model.model}-${model.version}`),
+        lifecycle:regional.lifecycle,
+        azureDefault:regional.isDefaultVersion===true,
+        hosting:hostingLabel(regional.capabilities?.hostedOn),
+        hostedOn:regional.capabilities?.hostedOn||null,
+        deprecationDate:regional.deprecationDate||null
+      }]
+    });
+    function staleIssueUrl(region=val("region"),generatedAt=catalogState.generatedAt){
+      const title=`Catalog appears stale for ${region}`;
+      const body=`Region: ${region}\nSnapshot generated: ${generatedAt||"curated fallback in use"}\n\nExpected model/version:\nObserved behavior:\n\nThe Cloud Shell live preflight remains authoritative.`;
+      return`https://github.com/cgero-msft/claude-code-foundry-ezdeploy/issues/new?${new URLSearchParams({title,body}).toString()}`
+    }
     const selectedModels=()=>[...document.querySelectorAll(".model-check:checked")].map(input=>{
       const meta=modelMetadata[input.dataset.key];
-      return{...meta,key:input.dataset.key,capacity:val(`capacity-${input.dataset.key}`),deployment:val(`deployment-${input.dataset.key}`)}
-    });
+      return meta?{...meta,key:input.dataset.key,capacity:val(`capacity-${input.dataset.key}`),deployment:val(`deployment-${input.dataset.key}`)}:null
+    }).filter(Boolean);
     const defaultModels=()=>Object.fromEntries(["sonnet","haiku","opus"].map(family=>{
       const input=document.querySelector(`input[name="default-${family}"]:checked:not(:disabled)`);
       return[family,input?selectedModels().find(model=>model.key===input.value)||null:null]
@@ -179,14 +273,15 @@
     function validate(n){
       const d=data();
       if(n===0){
+        if(!d.subscription||!d.rg||!/^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/.test(d.account)||!/^[A-Za-z0-9][A-Za-z0-9_.-]{1,62}[A-Za-z0-9]$/.test(d.project))return"Complete the Azure target and use valid account and project names.";
+        if(!requiredRegions.includes(d.region))return"Select a supported snapshot region.";
+      }
+      if(n===1){
         if(!d.models.length)return"Select at least one exact model version.";
         if(d.models.some(model=>!(+model.capacity>0&&Number.isInteger(+model.capacity))))return"Use a positive whole-number capacity for every selected model version.";
         if(d.models.some(model=>model.deployment.length>64||!/^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$/.test(model.deployment)))return"Use a valid 1-64 character deployment name for every selected model version.";
         const deploymentNames=d.models.map(model=>model.deployment.toLowerCase());
         if(new Set(deploymentNames).size!==deploymentNames.length)return"Use a unique deployment name for every selected exact model version.";
-      }
-      if(n===1){
-        if(!d.subscription||!d.rg||!/^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/.test(d.account)||!/^[A-Za-z0-9][A-Za-z0-9_.-]{1,62}[A-Za-z0-9]$/.test(d.project))return"Complete the Azure target and use valid account and project names.";
         if(!["eastus2","swedencentral"].includes(d.region)||d.models.some(model=>!model.regions.includes(d.region)))return"The selected exact versions are not supported in this package region.";
       }
       if(n===2&&(!d.org||!/^[A-Z]{2}$/.test(d.country)||!d.acceptTerms||!d.acceptHosting))return"Enter the legal organization and country code, then acknowledge the Marketplace terms and hosting boundaries.";
@@ -213,7 +308,7 @@
       show(failure.index,true);
       return false
     }
-    function command(dry=false,engineTarget=quote(engine)){
+    function command(dry=false,engineTarget=quote("./ezdeploy-engine.sh")){
       const d=data(),a=["bash",engineTarget,"--subscription",quote(d.subscription),"--resource-group",quote(d.rg),"--location",quote(d.region),"--account-name",quote(d.account),"--project-name",quote(d.project),"--organization-name",quote(d.org),"--country-code",quote(d.country),"--industry",quote(d.industry),"--sku",quote("GlobalStandard")];
       d.models.forEach(model=>{
         a.push("--model",quote([model.model,model.version,model.deployment,model.capacity].join(":")))
@@ -255,7 +350,7 @@
     }
     function review(){
       const d=data(),defaultText=Object.entries(d.defaults).filter(([,model])=>model).map(([family,model])=>`${family}: ${model.deployment}`).join(" · ");
-      const items=[["Selected versions",String(d.models.length)],["Target",`${d.subscription} / ${d.region}`],["Resource",`${d.rg} / ${d.account} / ${d.project}`],["Provider",`${d.org} (${d.country}, ${d.industry})`],["Claude Code defaults",defaultText],["Current-user RBAC",d.assignCurrentUser?"Assign if needed":"Do not assign"],["Marketplace terms","Acknowledged"],["Hosting boundaries",[...new Set(d.models.map(model=>model.hosting))].join(" + ")]];
+      const items=[["Selected versions",String(d.models.length)],["Catalog",catalogState.fallbackUsed?"Curated fallback":`${catalogState.generatedAt} reference snapshot`],["Target",`${d.subscription} / ${d.region}`],["Resource",`${d.rg} / ${d.account} / ${d.project}`],["Provider",`${d.org} (${d.country}, ${d.industry})`],["Claude Code defaults",defaultText],["Current-user RBAC",d.assignCurrentUser?"Assign if needed":"Do not assign"],["Marketplace terms","Acknowledged"],["Hosting boundaries",[...new Set(d.models.map(model=>model.hosting))].join(" + ")]];
       $("summary").innerHTML=items.map(([label,value])=>`<div><small>${escape(label)}</small><span>${escape(value)}</span></div>`).join("");
       $("reviewModels").innerHTML=d.models.map(model=>`<div class="review-model"><h3>${escape(model.family)} · ${escape(model.model)} @ ${escape(model.version)}</h3><div class="review-grid"><div><small>Deployment name</small><span>${escape(model.deployment)}</span></div><div><small>Hosting boundary</small><span>${escape(model.hosting)}</span></div><div><small>SKU / capacity</small><span>GlobalStandard / ${escape(model.capacity)}</span></div></div></div>`).join("");
       $("preview").textContent=command()
@@ -282,39 +377,93 @@
       if(enabled.length&&!enabled.some(radio=>radio.checked))enabled[0].checked=true;
       renderDefaults()
     }
-    function renderModelCards(){
-      $("modelList").innerHTML=Object.entries(modelMetadata).map(([key,model])=>{
-        const tag=model.recommended?'<span class="tag">Recommended Azure-hosted default</span>':"";
-        return`<article class="model-card" data-model-card="${escape(key)}"><div class="model-heading"><input class="model-check" id="model-${escape(key)}" type="checkbox" data-key="${escape(key)}"><label class="model-title" for="model-${escape(key)}"><h3>${escape(model.label)} @ ${escape(model.version)}</h3><p>Model <code>${escape(model.model)}</code></p></label></div><div class="model-meta"><span class="tag">${escape(model.family)} family</span><span class="tag">${escape(model.hosting)}</span><span class="tag">Package regions; live check required</span>${tag}</div><div class="model-controls"><div><label for="capacity-${escape(key)}">Capacity</label><input class="model-capacity" id="capacity-${escape(key)}" data-key="${escape(key)}" type="number" min="1" step="1" value="10" disabled></div><div><label for="deployment-${escape(key)}">Deployment name</label><input class="deployment-name" id="deployment-${escape(key)}" data-key="${escape(key)}" value="${escape(model.deployment)}" disabled></div><label class="default-label"><input class="default-model" type="radio" name="default-${escape(model.family)}" value="${escape(key)}" disabled>Claude Code ${escape(model.family)} default</label></div></article>`
-      }).join("")
+    function renderCatalogStatus(){
+      const messages=[];
+      if(catalogState.fallbackUsed)messages.push("The generated snapshot is missing or malformed. The wizard is using the curated fallback; verify every selection during the live Cloud Shell preflight.");
+      if(catalogState.stale)messages.push(`The reference snapshot is ${catalogState.ageDays} days old. Continue only after reviewing the live preflight; age alone does not block launcher generation.`);
+      if(catalogState.warnings.length)messages.push(`The snapshot contains ${catalogState.warnings.length} metadata conflict warning(s); ambiguous hosting is shown as unavailable.`);
+      $("catalogStatus").classList.toggle("hidden",messages.length===0);
+      $("catalogStatusTitle").textContent=catalogState.fallbackUsed?"Curated fallback catalog in use":catalogState.stale?"Catalog snapshot is older than seven days":"Catalog metadata warning";
+      $("catalogStatusMessage").textContent=messages.join(" ");
+      $("reportCatalog").href=staleIssueUrl()
     }
-    renderModelCards();
-    document.querySelectorAll(".model-check").forEach(input=>input.addEventListener("change",()=>syncModelSelection(input)));
-    document.querySelectorAll(".default-model").forEach(input=>input.addEventListener("change",renderDefaults));
-    document.querySelectorAll(".nav").forEach((element,index)=>element.onclick=()=>show(index));
-    $("next").onclick=()=>{const error=validate(step);error?alert(error):show(step+1,true)};
-    $("back").onclick=()=>show(step-1,true);
-    $("dry").onclick=()=>{if(ensureComplete())download("claude-code-foundry-dry-run.sh",launcher(true))};
-    $("deploy").onclick=()=>{if(ensureComplete())download("claude-code-foundry-deploy.sh",launcher(false))};
-    $("copy").onclick=async()=>{
-      if(!ensureComplete())return;
-      try{
-        if(navigator.clipboard&&navigator.clipboard.writeText){
-          try{
-            await navigator.clipboard.writeText(command())
-          }catch(error){
+    function renderModelCards(){
+      const previous=selectedModels();
+      const previousDefaults=defaultModels();
+      const models=catalogModelsForRegion(catalogState,val("region")||"eastus2",$("includePreview").checked);
+      Object.keys(modelMetadata).forEach(key=>delete modelMetadata[key]);
+      models.forEach(model=>{modelMetadata[model.key]=model});
+      $("modelList").innerHTML=models.map(model=>{
+        const badges=[
+          model.lifecycle==="Preview"?'<span class="tag preview">Preview</span>':"",
+          model.azureDefault?'<span class="tag azure-default">Azure Default</span>':"",
+          model.recommended?'<span class="tag recommended">EZDeploy Recommended</span>':"",
+          model.tested?'<span class="tag tested">EZDeploy Tested</span>':""
+        ].join("");
+        return`<article class="model-card" data-model-card="${escape(model.key)}"><div class="model-heading"><input class="model-check" id="model-${escape(model.key)}" type="checkbox" data-key="${escape(model.key)}"><label class="model-title" for="model-${escape(model.key)}"><h3>${escape(model.label)} @ ${escape(model.version)}</h3><p>Model <code>${escape(model.model)}</code></p></label></div><div class="model-meta"><span class="tag">${escape(model.family)} family</span><span class="tag">${escape(model.hosting)}</span><span class="tag">Reference subscription; live check required</span>${badges}</div><div class="model-controls"><div><label for="capacity-${escape(model.key)}">Capacity</label><input class="model-capacity" id="capacity-${escape(model.key)}" data-key="${escape(model.key)}" type="number" min="1" step="1" value="10" disabled></div><div><label for="deployment-${escape(model.key)}">Deployment name</label><input class="deployment-name" id="deployment-${escape(model.key)}" data-key="${escape(model.key)}" value="${escape(model.deployment)}" disabled></div><label class="default-label"><input class="default-model" id="default-${escape(model.key)}" type="radio" name="default-${escape(model.family)}" value="${escape(model.key)}" disabled>Claude Code ${escape(model.family)} default</label></div></article>`
+      }).join("")||'<div class="notice prominent"><b>No eligible models in this view</b><p>Check the selected region or explicitly opt in to Preview models. The live Cloud Shell catalog remains authoritative.</p></div>';
+      document.querySelectorAll(".model-check").forEach(input=>input.addEventListener("change",()=>syncModelSelection(input)));
+      document.querySelectorAll(".default-model").forEach(input=>input.addEventListener("change",renderDefaults));
+      previous.filter(model=>modelMetadata[model.key]).forEach(model=>{
+        const checkbox=$(`model-${model.key}`);
+        checkbox.checked=true;
+        document.querySelector(`[data-model-card="${model.key}"]`)?.classList.add("selected");
+        $(`capacity-${model.key}`).value=model.capacity;
+        $(`capacity-${model.key}`).disabled=false;
+        $(`deployment-${model.key}`).value=model.deployment;
+        $(`deployment-${model.key}`).disabled=false;
+        $(`default-${model.key}`).disabled=false;
+      });
+      Object.values(previousDefaults).filter(Boolean).forEach(model=>{
+        if(modelMetadata[model.key])$(`default-${model.key}`).checked=true
+      });
+      renderCatalogStatus();
+      renderDefaults()
+    }
+    function initialize(){
+      renderModelCards();
+      $("region").addEventListener("change",()=>{
+        const hadSelections=selectedModels().length>0;
+        renderModelCards();
+        if(hadSelections){
+          $("selectionNotice").classList.remove("hidden");
+          $("selectionNoticeMessage").textContent="The region changed. Models unavailable in the new regional snapshot were removed; review and explicitly confirm every remaining selection."
+        }
+      });
+      $("includePreview").addEventListener("change",()=>{
+        const hadPreview=selectedModels().some(model=>model.lifecycle==="Preview");
+        renderModelCards();
+        if(hadPreview&&!$("includePreview").checked){
+          $("selectionNotice").classList.remove("hidden");
+          $("selectionNoticeMessage").textContent="Preview models were hidden and removed from the selection. No substitute was selected."
+        }
+      });
+      document.querySelectorAll(".nav").forEach((element,index)=>element.onclick=()=>show(index));
+      $("next").onclick=()=>{const error=validate(step);error?alert(error):show(step+1,true)};
+      $("back").onclick=()=>show(step-1,true);
+      $("dry").onclick=()=>{if(ensureComplete())download("claude-code-foundry-dry-run.sh",launcher(true))};
+      $("deploy").onclick=()=>{if(ensureComplete())download("claude-code-foundry-deploy.sh",launcher(false))};
+      $("copy").onclick=async()=>{
+        if(!ensureComplete())return;
+        try{
+          if(navigator.clipboard&&navigator.clipboard.writeText){
+            try{
+              await navigator.clipboard.writeText(command())
+            }catch(error){
+              fallbackCopy(command())
+            }
+          }else{
             fallbackCopy(command())
           }
-        }else{
-          fallbackCopy(command())
+          $("copy").textContent="Copied";
+          setTimeout(()=>$("copy").textContent="Copy command",1200)
+        }catch(error){
+          alert(`Unable to copy the command: ${error.message}`)
         }
-        $("copy").textContent="Copied";
-        setTimeout(()=>$("copy").textContent="Copy command",1200)
-      }catch(error){
-        alert(`Unable to copy the command: ${error.message}`)
-      }
-    };
-    renderDefaults();
+      };
+      renderDefaults();
+    }
+    initialize();
   </script>
 </body>
 </html>

@@ -1,0 +1,191 @@
+name: Refresh model catalog
+
+on:
+  schedule:
+    - cron: "23 8 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: refresh-model-catalog
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    name: Refresh regional snapshot
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CATALOG_BRANCH: automation/model-catalog-refresh
+      FAILURE_ISSUE_TITLE: "[automation] Model catalog refresh failed"
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Check out default branch
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Log in to Azure with OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Query and generate catalog
+        shell: bash
+        env:
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p .tmp/catalog-refresh
+          failure_context="initializing catalog refresh"
+          trap 'printf "%s\n" "$failure_context" >.tmp/catalog-refresh/failure-context.txt' ERR
+          if [[ -f wizard/catalog/catalog.generated.js ]]; then
+            cp wizard/catalog/catalog.generated.js .tmp/catalog-refresh/catalog.previous.js
+          fi
+
+          for region in eastus2 swedencentral; do
+            failure_context="querying the ${region} regional catalog"
+            printf 'Querying %s...\n' "$region"
+            az cognitiveservices model list \
+              --location "$region" \
+              --subscription "$AZURE_SUBSCRIPTION_ID" \
+              --output json >".tmp/catalog-refresh/${region}.json"
+            test -s ".tmp/catalog-refresh/${region}.json"
+          done
+
+          failure_context="normalizing and validating both required regions"
+          node scripts/generate-model-catalog.js \
+            --region eastus2=.tmp/catalog-refresh/eastus2.json \
+            --region swedencentral=.tmp/catalog-refresh/swedencentral.json \
+            --previous wizard/catalog/catalog.generated.js \
+            --output wizard/catalog/catalog.generated.js
+
+          failure_context="running catalog regression tests"
+          node tests/catalog-generator-regression.js scripts/generate-model-catalog.js
+          failure_context="running wizard regression tests"
+          node tests/wizard-regression.js wizard/index.html
+          failure_context="summarizing the catalog diff"
+          node scripts/summarize-model-catalog.js \
+            .tmp/catalog-refresh/catalog.previous.js \
+            wizard/catalog/catalog.generated.js \
+            >.tmp/catalog-refresh/pull-request.md
+
+      - name: Open or update catalog pull request
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if [[ -z "$(git status --porcelain -- wizard/catalog/catalog.generated.js)" ]]; then
+            printf 'The checked-in snapshot is already current.\n'
+            pull_number="$(
+              gh pr list \
+                --state open \
+                --head "$CATALOG_BRANCH" \
+                --json number \
+                --jq '.[0].number // empty'
+            )"
+            if [[ -n "$pull_number" ]]; then
+              gh pr close "$pull_number" \
+                --comment "Closing this catalog refresh because the current Azure snapshot matches the default branch." \
+                --delete-branch
+            fi
+            exit 0
+          fi
+
+          default_branch="${{ github.event.repository.default_branch }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin \
+            "refs/heads/${CATALOG_BRANCH}:refs/remotes/origin/${CATALOG_BRANCH}" ||
+            true
+          git switch -C "$CATALOG_BRANCH"
+          git add wizard/catalog/catalog.generated.js
+          git commit -m "Refresh regional model catalog"
+          git push --force-with-lease origin "HEAD:refs/heads/${CATALOG_BRANCH}"
+
+          pull_number="$(
+            gh pr list \
+              --state open \
+              --head "$CATALOG_BRANCH" \
+              --json number \
+              --jq '.[0].number // empty'
+          )"
+          if [[ -n "$pull_number" ]]; then
+            gh pr edit "$pull_number" \
+              --title "Refresh regional model catalog" \
+              --body-file .tmp/catalog-refresh/pull-request.md
+          else
+            gh pr create \
+              --base "$default_branch" \
+              --head "$CATALOG_BRANCH" \
+              --title "Refresh regional model catalog" \
+              --body-file .tmp/catalog-refresh/pull-request.md
+          fi
+
+      - name: Close resolved refresh issue
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          issue_number="$(
+            gh issue list --state open --limit 100 --json number,title |
+              jq -r --arg title "$FAILURE_ISSUE_TITLE" \
+                '.[] | select(.title == $title) | .number' |
+              head -n1
+          )"
+          if [[ -n "$issue_number" ]]; then
+            gh issue close "$issue_number" \
+              --comment "The regional catalog refresh succeeded in ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}."
+          fi
+
+      - name: Open or update refresh failure issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          body_file="${RUNNER_TEMP}/catalog-refresh-failure.md"
+          failure_context="$(
+            cat .tmp/catalog-refresh/failure-context.txt 2>/dev/null ||
+              printf 'Azure OIDC login or workflow initialization'
+          )"
+          cat >"$body_file" <<EOF
+          The scheduled regional model catalog refresh failed. The checked-in last-known-good snapshot was not replaced.
+
+          - Regions: eastus2, swedencentral
+          - Failure category: ${failure_context}
+          - Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+          - Trigger: ${GITHUB_EVENT_NAME}
+
+          Review the failed step, repair the Azure OIDC or catalog input issue, and rerun the workflow manually.
+          EOF
+
+          issue_number="$(
+            gh issue list --state open --limit 100 --json number,title |
+              jq -r --arg title "$FAILURE_ISSUE_TITLE" \
+                '.[] | select(.title == $title) | .number' |
+              head -n1
+          )"
+          if [[ -n "$issue_number" ]]; then
+            gh issue edit "$issue_number" --body-file "$body_file"
+          else
+            gh issue create --title "$FAILURE_ISSUE_TITLE" --body-file "$body_file"
+          fi
