@@ -168,6 +168,15 @@ JSON
     collision-sku)
       printf '[{"name":"collision","sku":{"name":"ProvisionedManaged","capacity":4},"properties":{"model":{"name":"claude-sonnet-5","format":"Anthropic","version":"2"}}}]\n'
       ;;
+    collision-case)
+      printf '[{"name":"Collision","sku":{"name":"GlobalStandard","capacity":4},"properties":{"model":{"name":"claude-haiku-4-5","format":"Anthropic","version":"2"}}}]\n'
+      ;;
+    reused-case)
+      printf '[{"name":"Sonnet-Primary","sku":{"name":"GlobalStandard","capacity":4},"properties":{"model":{"name":"claude-sonnet-5","format":"Anthropic","version":"2"}}}]\n'
+      ;;
+    ambiguous-case)
+      printf '[{"name":"Collision","sku":{"name":"GlobalStandard","capacity":4},"properties":{"model":{"name":"claude-sonnet-5","format":"Anthropic","version":"2"}}},{"name":"collision","sku":{"name":"GlobalStandard","capacity":4},"properties":{"model":{"name":"claude-sonnet-5","format":"Anthropic","version":"2"}}}]\n'
+      ;;
     *) printf '[]\n' ;;
   esac
 elif [[ "${1:-}" == cognitiveservices && "${2:-}" == account &&
@@ -177,7 +186,7 @@ elif [[ "${1:-}" == cognitiveservices && "${2:-}" == account &&
   fi
 elif [[ "${1:-}" == cognitiveservices && "${2:-}" == account && "${3:-}" == list ]]; then
   case "$scenario" in
-    rerun|collision-model|collision-version|collision-sku|reused|reused-opt-in|management-role-only)
+    rerun|collision-model|collision-version|collision-sku|collision-case|reused-case|ambiguous-case|reused|reused-opt-in|management-role-only)
       printf '[{"name":"local-foundry-test","resourceGroup":"rg-local-test","kind":"AIServices","location":"eastus2","properties":{"customSubDomainName":"local-foundry-test"}}]\n'
       ;;
     *) printf '[]\n' ;;
@@ -393,11 +402,20 @@ assert_contains "explicit family default replaces first-selection default" "$LAS
 run_engine new --model broken-spec --dry-run
 expect_failure "invalid model specification is rejected" "--model must use MODEL:VERSION:DEPLOYMENT:CAPACITY or MODEL@VERSION=CAPACITY."
 
+run_engine new --model claude-sonnet-5::missing-version:5 --dry-run
+expect_failure "model specification without a version is rejected" "--model must use MODEL:VERSION:DEPLOYMENT:CAPACITY or MODEL@VERSION=CAPACITY."
+
 run_engine new \
   --model claude-sonnet-5:2:duplicate:5 \
   --model claude-sonnet-5:1:duplicate:5 \
   --dry-run
 expect_failure "duplicate deployment specification is rejected" "Deployment duplicate was selected more than once."
+
+run_engine new \
+  --model claude-sonnet-5:2:Duplicate:5 \
+  --model claude-sonnet-5:1:duplicate:5 \
+  --dry-run
+expect_failure "case-only duplicate deployment specification is rejected" "Deployment duplicate was selected more than once."
 
 run_engine new \
   --model claude-sonnet-5@2=5 \
@@ -411,6 +429,20 @@ run_engine new \
   --default-sonnet-model not-selected \
   --dry-run
 expect_failure "unselected explicit default is rejected" "Default sonnet selector not-selected is not a selected sonnet deployment or MODEL@VERSION."
+
+run_engine new \
+  --model claude-sonnet-5:2:Sonnet-Primary:5 \
+  --default-sonnet-model sonnet-primary \
+  --dry-run
+expect_success "family default deployment selector is case-insensitive"
+assert_contains "deployment display casing is preserved" "$LAST_OUTPUT" "Sonnet-Primary: claude-sonnet-5 version 2, capacity 5 [family default]"
+assert_not_contains "deployment display casing is not normalized" "$LAST_OUTPUT" "sonnet-primary: claude-sonnet-5 version 2"
+
+run_engine new \
+  --model claude-sonnet-5:2:Sonnet-Primary:5 \
+  --default-sonnet-model claude-sonnet-5@02 \
+  --dry-run
+expect_failure "exact MODEL@VERSION default selector remains exact" "Default sonnet selector claude-sonnet-5@02 is not a selected sonnet deployment or MODEL@VERSION."
 
 for wrapper in \
   '[{"model":{"name":"wrapped","version":"1"}}]' \
@@ -468,6 +500,16 @@ run_engine collision-sku \
   --dry-run
 expect_failure "deployment SKU collision is rejected" "uses SKU ProvisionedManaged; refusing to replace it with GlobalStandard."
 
+run_engine collision-case \
+  --model claude-sonnet-5:2:collision:5 \
+  --dry-run
+expect_failure "existing case-only deployment collision is rejected" "Deployment-name collision: Collision currently targets claude-haiku-4-5, not claude-sonnet-5."
+
+run_engine ambiguous-case \
+  --model claude-sonnet-5:2:collision:5 \
+  --dry-run
+expect_failure "ambiguous existing case-only deployments are rejected" "Multiple existing deployments differ only by case for requested name collision"
+
 ARTIFACT_DIR="${TEST_ROOT}/generated-package"
 run_engine new \
   --model claude-sonnet-5:2:sonnet-primary:9 \
@@ -494,7 +536,30 @@ expect_success "reused account deployment path succeeds"
 assert_contains "reused account is still updated for project management" "$LAST_LOG" "cognitiveservices account update"
 assert_not_contains "reused account preserves local authentication by default" "$LAST_LOG" "--disable-local-auth true"
 assert_not_contains "reused account does not require local-auth update compatibility by default" "$LAST_LOG" "cognitiveservices account update --help"
-assert_contains "reused account confirmation shows preservation behavior" "$LAST_OUTPUT" "Local authentication:preserve existing account setting"
+assert_contains "reused account confirmation shows preservation behavior" "$LAST_OUTPUT" "Local authentication: preserve existing account setting"
+
+REUSED_CASE_ARTIFACT_DIR="${TEST_ROOT}/reused-case-package"
+run_engine reused-case \
+  --model claude-sonnet-5:2:sonnet-primary:9 \
+  --assign-current-user \
+  --output-dir "$REUSED_CASE_ARTIFACT_DIR" \
+  --yes
+expect_success "case-insensitive existing deployment reuse succeeds"
+assert_contains "case-insensitive reuse adopts Azure deployment casing" "$LAST_LOG" "/deployments/Sonnet-Primary?api-version="
+assert_not_contains "case-insensitive reuse avoids user-cased deployment path" "$LAST_LOG" "/deployments/sonnet-primary?api-version="
+assert_contains "case-insensitive reuse calculates only incremental quota" "$LAST_OUTPUT" "AIServices.GlobalStandard.claude-sonnet-5: 90 available; 5 additional capacity required."
+if jq -e '
+  ([."claudeCode.environmentVariables"[] | select(.name == "ANTHROPIC_DEFAULT_SONNET_MODEL" and .value == "Sonnet-Primary")] | length) == 1
+' "${REUSED_CASE_ARTIFACT_DIR}/vscode-settings.snippet.json" >/dev/null &&
+   jq -e '
+  (.models | length) == 1 and
+  .models[0].deploymentName == "Sonnet-Primary" and
+  .models[0].familyDefault == true
+' "${REUSED_CASE_ARTIFACT_DIR}/deployment-report.json" >/dev/null; then
+  pass "case-insensitive reuse preserves canonical casing in generated artifacts"
+else
+  fail "case-insensitive reuse preserves canonical casing in generated artifacts" "canonical deployment casing or family default was lost"
+fi
 
 REUSED_OPT_IN_ARTIFACT_DIR="${TEST_ROOT}/reused-opt-in-package"
 run_engine reused-opt-in \
@@ -506,7 +571,7 @@ run_engine reused-opt-in \
 expect_success "reused account local-auth opt-in succeeds"
 assert_contains "reused account opt-in passes local-auth disable flag" "$LAST_LOG" "--disable-local-auth true"
 assert_before "reused account opt-in compatibility is checked before mutation" "$LAST_LOG" "cognitiveservices account update --help" "group create"
-assert_contains "reused account opt-in is shown in confirmation" "$LAST_OUTPUT" "Local authentication:disable on existing account (explicit opt-in)"
+assert_contains "reused account opt-in is shown in confirmation" "$LAST_OUTPUT" "Local authentication: disable on existing account (explicit opt-in)"
 assert_contains "reused account opt-in is explicitly confirmed" "$LAST_OUTPUT" "--yes also confirms disabling local authentication"
 
 run_engine reused-opt-in \
