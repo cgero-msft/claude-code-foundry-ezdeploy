@@ -181,12 +181,19 @@ For 401 or 403 responses, confirm the expected tenant and subscription are selec
 
 ## Run tests
 
-The local regression runner requires Node.js and Git for Windows. Git Bash must provide `jq` and `tar`.
+The full regression suite requires Node.js, Bash, `jq`, `tar`, and PowerShell.
 
-From the repository root in PowerShell:
+On Windows, run from the repository root in PowerShell. The wrapper uses Git Bash for the engine tests:
 
 ```powershell
 .\tests\run-regression.ps1
+```
+
+On Linux, run the wizard and engine suites directly:
+
+```bash
+node tests/wizard-regression.js wizard/index.html
+bash tests/engine-regression.sh scripts/ezdeploy-engine.sh
 ```
 
 The engine tests use a fake Azure CLI and local fixtures; they do not deploy Azure resources.

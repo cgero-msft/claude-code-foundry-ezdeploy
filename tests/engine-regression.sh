@@ -5,14 +5,16 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 ENGINE_INPUT="${1:-${SCRIPT_DIR}/../scripts/ezdeploy-engine.sh}"
 if [[ -f "$ENGINE_INPUT" ]]; then
   ENGINE="$ENGINE_INPUT"
-else
+elif command -v cygpath >/dev/null 2>&1; then
   ENGINE="$(cygpath -u "$ENGINE_INPUT")"
+else
+  ENGINE="$ENGINE_INPUT"
 fi
 [[ -f "$ENGINE" ]] || { printf 'Engine not found: %s\n' "$ENGINE_INPUT" >&2; exit 2; }
 
 for tool in jq tar; do
   command -v "$tool" >/dev/null 2>&1 || {
-    printf '%s is required in Git Bash for the engine regression suite.\n' "$tool" >&2
+    printf '%s is required for the engine regression suite.\n' "$tool" >&2
     exit 2
   }
 done
@@ -611,8 +613,17 @@ assert_contains "Bash installer executes the saved installer" "${ARTIFACT_DIR}/i
 assert_contains "Bash installer cleans up its temporary file" "${ARTIFACT_DIR}/install-claude-code-local.sh" 'rm -f -- "$installer"'
 assert_not_contains "Bash installer does not pipe remote code to shell" "${ARTIFACT_DIR}/install-claude-code-local.sh" "curl -fsSL https://claude.ai/install.sh | bash"
 
-PS_FILE_WINDOWS="$(cygpath -w "${ARTIFACT_DIR}/install-claude-code-windows.ps1")"
-if pwsh.exe -NoProfile -Command "[void][scriptblock]::Create((Get-Content -Raw -LiteralPath '$PS_FILE_WINDOWS'))" >/dev/null 2>&1; then
+if command -v pwsh.exe >/dev/null 2>&1; then
+  POWERSHELL_COMMAND="pwsh.exe"
+  PS_FILE="$(cygpath -w "${ARTIFACT_DIR}/install-claude-code-windows.ps1")"
+elif command -v pwsh >/dev/null 2>&1; then
+  POWERSHELL_COMMAND="pwsh"
+  PS_FILE="${ARTIFACT_DIR}/install-claude-code-windows.ps1"
+else
+  printf 'PowerShell is required for the engine regression suite.\n' >&2
+  exit 2
+fi
+if "$POWERSHELL_COMMAND" -NoProfile -Command "[void][scriptblock]::Create((Get-Content -Raw -LiteralPath '$PS_FILE'))" >/dev/null 2>&1; then
   pass "generated PowerShell installer parses"
 else
   fail "generated PowerShell installer parses" "PowerShell parser failed"
