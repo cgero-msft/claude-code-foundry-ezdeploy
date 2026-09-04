@@ -58,7 +58,7 @@ node scripts/generate-model-catalog.js \
 
 The generator accepts only complete data for both regions, deduplicates models by `format|name|version`, deduplicates SKUs by `name|usageName`, and writes atomically. Empty, malformed, or incomplete input must leave the checked-in last-known-good snapshot unchanged.
 
-The daily `refresh-model-catalog.yml` workflow uses GitHub OIDC, opens or updates an automation pull request for valid changes, and opens or updates one failure issue without replacing the snapshot when refresh or validation fails. Never add a client secret to this workflow.
+The daily `refresh-model-catalog.yml` workflow uses GitHub OIDC, opens or updates an automation pull request for valid changes, and opens or updates one failure issue without replacing the snapshot when refresh or validation fails. Never add a client secret to this workflow. The workflow's owner setup — federated credential, reference identity role, and repository secrets — is documented in [docs/catalog-refresh.md](docs/catalog-refresh.md).
 
 ## Pull requests
 
