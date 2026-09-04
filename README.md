@@ -5,6 +5,40 @@ Deploy the Azure resources and exact Claude model versions needed to use Claude 
 > [!IMPORTANT]
 > This is an unofficial community sample. It is not an official Microsoft or Anthropic product and is not supported under either company's product support commitments. Microsoft, Azure, Microsoft Foundry, Anthropic, Claude, and Claude Code are trademarks of their respective owners.
 
+## Quick start
+
+The full flow is five steps; each links to its detailed section below.
+
+1. Open [`wizard/index.html`](wizard/index.html) in a browser and select the Azure target and exact model versions, capacities, and Claude Code defaults. No sign-in or network access is required. See [Anonymous regional model catalog](#anonymous-regional-model-catalog).
+2. Download the generated dry-run and deployment launchers. See [Generate the launchers](#generate-the-launchers).
+3. Upload both launchers and `scripts/ezdeploy-engine.sh` to one Azure Cloud Shell folder and run the dry run to validate the live catalog, quota, and existing resources without changes. See [Run the dry run first](#run-the-dry-run-first).
+4. Run the deployment launcher, review the live preflight output, and type `ACCEPT`. See [Confirm and deploy](#confirm-and-deploy).
+5. Download the generated workstation package and run its installer to configure Claude Code. See [Generated workstation package](#generated-workstation-package) and [Verify Claude Code](#verify-claude-code).
+
+```mermaid
+flowchart LR
+    subgraph browser["Browser (anonymous, no network calls)"]
+        wizard["wizard/index.html<br>+ checked-in catalog snapshot"]
+    end
+    subgraph shell["Azure Cloud Shell (authenticated)"]
+        launcher["Generated launchers<br>dry run / deploy"]
+        engine["ezdeploy-engine.sh<br>live preflight + ACCEPT gate"]
+    end
+    subgraph azure["Azure subscription"]
+        resources["Foundry account and project<br>pinned model deployments"]
+    end
+    subgraph workstation["Workstation"]
+        pkg["claude-code-foundry.tar.gz<br>env activators + installers"]
+        claudecode["Claude Code<br>sonnet / haiku / opus aliases"]
+    end
+    wizard -- "download" --> launcher
+    launcher --> engine
+    engine -- "validates, then creates" --> resources
+    engine -- "generates" --> pkg
+    pkg -- "install + configure" --> claudecode
+    claudecode -- "Entra ID inference" --> resources
+```
+
 ## What this repository contains
 
 | Path | Purpose |
@@ -56,6 +90,8 @@ The snapshot is discovery guidance, not an eligibility guarantee. Your subscript
 The wizard displays Azure's default-version signal as **Azure Default**. Human-reviewed **EZDeploy Recommended** and **EZDeploy Tested** badges come from the separate curated overlay. Hosting is derived from Azure's `capabilities.hostedOn`; when Azure omits it, the wizard displays `hosting unavailable—verify during live preflight` rather than guessing.
 
 If the generated snapshot is missing or malformed, the wizard uses the curated fallback and displays a prominent warning. A snapshot older than seven days also produces a warning, but age alone never blocks launcher generation. The model page includes a prefilled GitHub issue link for reporting stale or missing entries; anonymous users are not offered a workflow or commit trigger.
+
+The snapshot is refreshed by a scheduled GitHub Actions workflow that proposes changes through pull requests and never commits directly to the default branch. How it works, and the setup a fork owner needs, are documented in [docs/catalog-refresh.md](docs/catalog-refresh.md).
 
 Each checked item represents an exact catalog model and version and becomes a separate `GlobalStandard` deployment with:
 
@@ -113,52 +149,6 @@ The dry run validates authentication, subscription and tenant selection, account
 If any live result differs from your approval, update the wizard selections, generate a new launcher, and repeat the dry run.
 
 Unsupported regional model/version/SKU selections and quota shortages stop before mutation. Where the live APIs provide enough information, the engine reports another supported snapshot region, other live versions in the same Claude family, and the maximum incremental capacity possible under current quota. It never silently skips a model, substitutes a version or SKU, changes region, or lowers capacity. Azure deployment API rejections preserve the exact service error and stop later model deployments.
-
-## Automated catalog refresh
-
-`.github/workflows/refresh-model-catalog.yml` runs daily and supports `workflow_dispatch`. It signs in with `azure/login@v2` and GitHub OIDC, queries:
-
-```bash
-az cognitiveservices model list --location eastus2 --subscription "$AZURE_SUBSCRIPTION_ID" --output json
-az cognitiveservices model list --location swedencentral --subscription "$AZURE_SUBSCRIPTION_ID" --output json
-```
-
-The generator normalizes duplicate API rows by `format|name|version` and duplicate SKUs by `name|usageName`. It requires nonempty eligible data for both regions and writes the snapshot atomically. A failed, empty, malformed, or region-incomplete refresh leaves the checked-in snapshot unchanged and opens or updates one GitHub issue. A valid change is pushed only to `automation/model-catalog-refresh` and opens or updates an automated pull request; the workflow never commits directly to the default branch.
-
-Repository owner setup:
-
-1. Create a Microsoft Entra application or user-assigned managed identity for this repository.
-2. Add a GitHub federated credential scoped to this repository and the default branch used by scheduled and manually dispatched runs.
-3. On the designated reference subscription, assign a custom read-only role containing only `Microsoft.CognitiveServices/locations/models/read`.
-4. Add repository Actions secrets named `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and `AZURE_SUBSCRIPTION_ID`. These identifiers are not Azure client secrets and no Azure client secret is used, but they are stored as GitHub Actions secrets rather than variables so GitHub masks them in the publicly readable workflow logs of this public repository.
-5. In **Settings > Actions > General**, set default workflow permissions to read-only and enable **Allow GitHub Actions to create and approve pull requests**. If organization policy prevents this, replace the PR step's `GITHUB_TOKEN` with a narrowly scoped GitHub App token.
-
-The branch-scoped federated credential subject for this repository is:
-
-```text
-repo:cgero-msft/claude-code-foundry-ezdeploy:ref:refs/heads/main
-```
-
-Run manual dispatches from the default branch so they use the same trust. A minimal custom role definition uses the reference subscription as its only assignable scope:
-
-```json
-{
-  "Name": "Foundry Regional Model Catalog Reader",
-  "IsCustom": true,
-  "Description": "Read only the regional Microsoft Foundry model catalog.",
-  "Actions": [
-    "Microsoft.CognitiveServices/locations/models/read"
-  ],
-  "NotActions": [],
-  "DataActions": [],
-  "NotDataActions": [],
-  "AssignableScopes": [
-    "/subscriptions/<reference-subscription-id>"
-  ]
-}
-```
-
-The reference identity should not receive Contributor, Owner, deployment, quota-write, or resource-write permissions. The current workflow uses repository Actions secrets and a branch-scoped federated credential; it does not declare a GitHub environment.
 
 ## Confirm and deploy
 
@@ -238,26 +228,6 @@ Confirm that the API provider is Microsoft Foundry, the Foundry resource is corr
 
 For 401 or 403 responses, confirm the expected tenant and subscription are selected and the user has one of the supported runtime roles listed in [Before you start](#before-you-start). Management-plane roles alone, including Owner, Contributor, Cognitive Services Contributor, Foundry Account Owner, and Azure AI Account Owner, are not sufficient for Entra inference.
 
-## Run tests
-
-The full regression suite requires Node.js, Bash, `jq`, `tar`, and PowerShell.
-
-On Windows, run from the repository root in PowerShell. The wrapper uses Git Bash for the engine tests:
-
-```powershell
-.\tests\run-regression.ps1
-```
-
-On Linux, run the wizard and engine suites directly:
-
-```bash
-node tests/catalog-generator-regression.js scripts/generate-model-catalog.js
-node tests/wizard-regression.js wizard/index.html
-bash tests/engine-regression.sh scripts/ezdeploy-engine.sh
-```
-
-The engine tests use a fake Azure CLI and local fixtures; they do not deploy Azure resources.
-
 ## Cleanup
 
 This project does not automatically delete Azure resources. To stop charges, use the Azure portal or Azure CLI to remove model deployments and other resources you no longer need. Delete the entire resource group only when it was created for this sample and contains nothing else.
@@ -268,6 +238,10 @@ Also remove generated workstation files and any profile lines that source:
 - `$HOME\.claude\foundry.ps1`
 
 Review role assignments before removing them; the engine may have reused pre-existing access rather than creating a new assignment.
+
+## Contributing
+
+Development setup, the regression suites, and catalog layer rules are documented in [CONTRIBUTING.md](CONTRIBUTING.md). The catalog refresh automation and its owner setup are documented in [docs/catalog-refresh.md](docs/catalog-refresh.md).
 
 ## License
 
