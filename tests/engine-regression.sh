@@ -132,6 +132,16 @@ arg_after() {
 query="$(arg_after --query "$@")"
 scenario="${FAKE_AZ_SCENARIO:-new}"
 
+catalog_with_lifecycle() {
+  jq '
+    map(
+      .model.lifecycleStatus //= "GenerallyAvailable" |
+      .model.capabilities.chatCompletion //= "true" |
+      .model.skus |= map(.capacity //= {"minimum":1,"maximum":100,"step":1})
+    )
+  ' "$FAKE_CATALOG"
+}
+
 if [[ "${1:-}" == version ]]; then
   printf '2.83.0\n'
 elif [[ "${1:-}" == account && "${2:-}" == show ]]; then
@@ -148,9 +158,71 @@ elif [[ "${1:-}" == provider && "${2:-}" == show ]]; then
 elif [[ "${1:-}" == provider && "${2:-}" == register ]]; then
   :
 elif [[ "${1:-}" == cognitiveservices && "${2:-}" == model && "${3:-}" == list ]]; then
-  cat "$FAKE_CATALOG"
+  location="$(arg_after --location "$@")"
+  case "$scenario" in
+    regional-mismatch)
+      if [[ "$location" == eastus2 ]]; then
+        catalog_with_lifecycle |
+          jq '
+            map(if .model.name == "claude-sonnet-4-6" then .model.lifecycleStatus = "Retired" else . end) |
+            [.[] | select(.model.name != "claude-sonnet-5" or (.model.version | tostring) != "2")]
+          '
+      else
+        catalog_with_lifecycle
+      fi
+      ;;
+    deprecated)
+      catalog_with_lifecycle |
+        jq 'map(if .model.name == "claude-sonnet-5" and (.model.version | tostring) == "2" then .model.lifecycleStatus = "Deprecated" else . end)'
+      ;;
+    sku-mismatch)
+      catalog_with_lifecycle |
+        jq 'map(if .model.name == "claude-sonnet-5" and (.model.version | tostring) == "2" then .model.skus = [{"name":"ProvisionedManaged","usageName":"other"}] else . end)'
+      ;;
+    capacity-invalid)
+      catalog_with_lifecycle |
+        jq 'map(if .model.name == "claude-sonnet-5" and (.model.version | tostring) == "2" then .model.skus[0].capacity = {"minimum":5,"maximum":20,"step":5} else . end)'
+      ;;
+    duplicate-split)
+      catalog_with_lifecycle |
+        jq '
+          . as $catalog |
+          ($catalog[] | select(.model.name == "claude-sonnet-5" and (.model.version | tostring) == "2")) as $selected |
+          [
+            $catalog[] |
+            if .model.name == "claude-sonnet-5" and (.model.version | tostring) == "2"
+            then .model.skus = [{"name":"ProvisionedManaged","usageName":"other","capacity":{"minimum":1,"maximum":100,"step":1}}]
+            else .
+            end
+          ] + [$selected]
+        '
+      ;;
+    duplicate-conflict)
+      catalog_with_lifecycle |
+        jq '
+          . as $catalog |
+          ($catalog[] | select(.model.name == "claude-sonnet-5" and (.model.version | tostring) == "2")
+            | .model.hostingType = "Anthropic infrastructure") as $conflict |
+          $catalog + [$conflict]
+        '
+      ;;
+    duplicate-missing-metadata)
+      catalog_with_lifecycle |
+        jq '
+          . as $catalog |
+          ($catalog[] | select(.model.name == "claude-sonnet-5" and (.model.version | tostring) == "2")
+            | del(.model.lifecycleStatus, .model.publisher, .model.capabilities)) as $incomplete |
+          [$incomplete] + $catalog
+        '
+      ;;
+    *) catalog_with_lifecycle ;;
+  esac
 elif [[ "${1:-}" == cognitiveservices && "${2:-}" == usage && "${3:-}" == list ]]; then
-  cat "$FAKE_USAGE"
+  if [[ "$scenario" == quota-shortage ]]; then
+    jq 'map(if .name.value == "AIServices.GlobalStandard.claude-sonnet-5" then .currentValue = 98 | .limit = 100 else . end)' "$FAKE_USAGE"
+  else
+    cat "$FAKE_USAGE"
+  fi
 elif [[ "${1:-}" == cognitiveservices && "${2:-}" == account && "${3:-}" == deployment && "${4:-}" == list ]]; then
   case "$scenario" in
     rerun)
@@ -203,7 +275,9 @@ elif [[ "${1:-}" == cognitiveservices && "${2:-}" == account && "${3:-}" == proj
   :
 elif [[ "${1:-}" == cognitiveservices && "${2:-}" == account && "${3:-}" == deployment && "${4:-}" == show ]]; then
   deployment="$(arg_after --deployment-name "$@")"
-  if [[ "$query" == properties.provisioningState ]]; then
+  if [[ "$scenario" == deployment-rejected ]]; then
+    exit 1
+  elif [[ "$query" == properties.provisioningState ]]; then
     printf 'Succeeded\n'
   elif [[ -f "${FAKE_AZ_STATE}/${deployment}.json" ]]; then
     jq --arg name "$deployment" '. + {name:$name} | .properties.provisioningState = "Succeeded"' "${FAKE_AZ_STATE}/${deployment}.json"
@@ -244,6 +318,10 @@ elif [[ "${1:-}" == rest ]]; then
   elif [[ "$method" == get && "$url" == *Microsoft.MarketplaceOrdering* ]]; then
     printf '{"properties":{"accepted":true}}\n'
   elif [[ "$method" == put && "$url" == *'/deployments/'* ]]; then
+    if [[ "$scenario" == deployment-rejected ]]; then
+      printf 'DeploymentModelNotSupported: selected model deployment was rejected.\n' >&2
+      exit 1
+    fi
     deployment="${url##*/deployments/}"
     deployment="${deployment%%\?*}"
     printf '%s\n' "$body" >"${FAKE_AZ_STATE}/${deployment}.json"
@@ -471,7 +549,63 @@ run_engine new \
   --sku UnsupportedSku \
   --model claude-sonnet-5:2:sonnet-v2:5 \
   --dry-run
-expect_failure "unsupported exact-version SKU is rejected" "does not support UnsupportedSku in eastus2."
+expect_failure "unsupported exact-version SKU is rejected" "does not support UnsupportedSku in eastus2 for deployment sonnet-v2"
+
+run_engine sku-mismatch \
+  --model claude-sonnet-5:2:sonnet-v2:5 \
+  --dry-run
+expect_failure "regional SKU mismatch is rejected before mutation" "does not support GlobalStandard in eastus2"
+assert_contains "regional SKU mismatch provides same-family alternatives" "$LAST_OUTPUT" "Other live sonnet versions supporting GlobalStandard in eastus2"
+assert_not_contains "regional SKU mismatch does not mutate Azure" "$LAST_LOG" "group create"
+
+run_engine capacity-invalid \
+  --model claude-sonnet-5:2:sonnet-v2:6 \
+  --yes
+expect_failure "invalid live SKU capacity is rejected before mutation" "does not allow requested GlobalStandard capacity 6"
+assert_contains "invalid live SKU capacity reports rules" "$LAST_OUTPUT" '"minimum":5'
+assert_not_contains "invalid live SKU capacity does not mutate Azure" "$LAST_LOG" "group create"
+
+run_engine duplicate-split \
+  --model claude-sonnet-5:2:sonnet-v2:5 \
+  --dry-run
+expect_success "split duplicate live catalog rows are normalized"
+assert_contains "split duplicate retains GlobalStandard SKU" "$LAST_OUTPUT" "quota AIServices.GlobalStandard.claude-sonnet-5"
+
+run_engine duplicate-conflict \
+  --model claude-sonnet-5:2:sonnet-v2:5 \
+  --yes
+expect_failure "conflicting duplicate live catalog rows are rejected" "conflicting duplicate metadata"
+assert_not_contains "conflicting duplicate catalog does not mutate Azure" "$LAST_LOG" "group create"
+
+run_engine duplicate-missing-metadata \
+  --model claude-sonnet-5:2:sonnet-v2:5 \
+  --dry-run
+expect_success "duplicate live rows aggregate nonempty metadata deterministically"
+assert_contains "duplicate metadata aggregation retains lifecycle" "$LAST_OUTPUT" "lifecycle GenerallyAvailable"
+
+run_engine regional-mismatch \
+  --model claude-sonnet-5:2:sonnet-v2:5 \
+  --dry-run
+expect_failure "regional model mismatch is rejected before mutation" "claude-sonnet-5 version 2 for deployment sonnet-v2 is unavailable in the live eastus2 catalog"
+assert_contains "regional mismatch identifies another supported region" "$LAST_OUTPUT" "currently supports GlobalStandard in swedencentral"
+assert_contains "regional mismatch suggests another family version" "$LAST_OUTPUT" "Other live sonnet versions supporting GlobalStandard in eastus2"
+assert_not_contains "regional mismatch does not suggest retired alternatives" "$LAST_OUTPUT" "claude-sonnet-4-6@1"
+assert_not_contains "regional mismatch does not mutate Azure" "$LAST_LOG" "group create"
+
+run_engine deprecated \
+  --model claude-sonnet-5:2:sonnet-v2:5 \
+  --dry-run
+expect_failure "deprecated exact version is rejected before mutation" "has live lifecycle Deprecated"
+assert_contains "deprecated version reports hosting" "$LAST_OUTPUT" "hosting Azure infrastructure"
+assert_not_contains "deprecated version does not mutate Azure" "$LAST_LOG" "group create"
+
+run_engine quota-shortage \
+  --model claude-sonnet-5:2:sonnet-v2:5 \
+  --dry-run
+expect_failure "quota shortage is rejected before mutation" "Quota shortage for AIServices.GlobalStandard.claude-sonnet-5 in eastus2"
+assert_contains "quota shortage reports current usage and limit" "$LAST_OUTPUT" "current usage 98, limit 100, available 2, requested incremental capacity 5"
+assert_contains "quota shortage reports maximum incremental capacity" "$LAST_OUTPUT" "Maximum incremental capacity possible under current quota is 2"
+assert_not_contains "quota shortage does not mutate Azure" "$LAST_LOG" "group create"
 
 run_engine rerun \
   --model claude-sonnet-5:2:sonnet-v2:10 \
@@ -591,6 +725,13 @@ run_engine management-role-only \
   --yes
 expect_success "management-plane-only role deployment succeeds"
 assert_contains "management-plane-only roles cause runtime role assignment" "$LAST_LOG" "role assignment create"
+
+run_engine deployment-rejected \
+  --model claude-sonnet-5:2:sonnet-primary:9 \
+  --yes
+expect_failure "deployment API rejection is surfaced" "Azure rejected sonnet-primary (claude-sonnet-5 version 2, GlobalStandard, eastus2)"
+assert_contains "deployment rejection preserves Azure error" "$LAST_OUTPUT" "DeploymentModelNotSupported"
+assert_contains "deployment rejection refuses automatic substitution" "$LAST_OUTPUT" "no model, version, SKU, region, or capacity was substituted"
 
 if [[ -f "${NEW_ACCOUNT_STATE}/sonnet-primary.json" && -f "${NEW_ACCOUNT_STATE}/haiku-primary.json" ]] &&
    jq -e '.properties.versionUpgradeOption == "NoAutoUpgrade" and .properties.raiPolicyName == "Microsoft.DefaultV2" and .sku.name == "GlobalStandard"' "${NEW_ACCOUNT_STATE}/sonnet-primary.json" >/dev/null &&

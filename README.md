@@ -9,9 +9,14 @@ Deploy the Azure resources and exact Claude model versions needed to use Claude 
 
 | Path | Purpose |
 |---|---|
-| `wizard/index.html` | Select exact model versions, deployment names, capacities, Azure targets, and Claude Code family defaults. |
+| `wizard/index.html` | Select an Azure target, then exact regional model versions, deployment names, capacities, and Claude Code family defaults. |
+| `wizard/catalog/catalog.generated.js` | Checked-in regional snapshot generated from the official Azure catalog for anonymous local use. |
+| `wizard/catalog/catalog.overlay.js` | Human-curated friendly names, ordering, default deployment names, and EZDeploy Recommended/Tested status. |
+| `wizard/catalog/catalog.fallback.js` | Curated emergency catalog used when the generated snapshot is missing or malformed. |
 | `scripts/ezdeploy-engine.sh` | Validate and deploy the selected configuration from Azure Cloud Shell. |
+| `scripts/generate-model-catalog.js` | Normalize and validate regional Azure catalog responses without third-party packages. |
 | `tests/run-regression.ps1` | Run the wizard and engine regression suites locally. |
+| `tests/catalog-generator-regression.js` | Test catalog normalization and last-known-good failure behavior. |
 | `tests/wizard-regression.js` | Test wizard validation and launcher generation. |
 | `tests/engine-regression.sh` | Test engine behavior with fixtures and a fake Azure CLI. |
 
@@ -40,9 +45,19 @@ The engine creates or reuses an `AIServices` account with a custom service endpo
 
 Generated configuration files contain identifiers such as subscription ID, tenant ID, resource names, project endpoints, deployment names, and model versions. They are not intended to contain secrets, but they may expose environment metadata. Store and share them accordingly. See [SECURITY.md](SECURITY.md) for additional limitations.
 
-## Select exact model versions
+## Anonymous regional model catalog
 
-Open `wizard/index.html` in a browser. Each checked item represents an exact catalog model and version and becomes a separate `GlobalStandard` deployment with:
+Open `wizard/index.html` directly from the repository. The wizard does not authenticate to Azure, require a web server, or use GitHub Pages. It loads `wizard/catalog/catalog.generated.js` as a sibling script so local `file://` use works.
+
+The generated snapshot is refreshed from a designated reference subscription for exactly East US 2 and Sweden Central. It includes Anthropic Claude chat-completion models with `GlobalStandard` support and a GA or Preview lifecycle. Preview models remain hidden until the user explicitly enables **Show Preview models**; no model is preselected.
+
+The snapshot is discovery guidance, not an eligibility guarantee. Your subscription can differ in model access, quota, current service capacity, Marketplace terms, and hosting metadata. The engine's live Cloud Shell preflight remains authoritative.
+
+The wizard displays Azure's default-version signal as **Azure Default**. Human-reviewed **EZDeploy Recommended** and **EZDeploy Tested** badges come from the separate curated overlay. Hosting is derived from Azure's `capabilities.hostedOn`; when Azure omits it, the wizard displays `hosting unavailable—verify during live preflight` rather than guessing.
+
+If the generated snapshot is missing or malformed, the wizard uses the curated fallback and displays a prominent warning. A snapshot older than seven days also produces a warning, but age alone never blocks launcher generation. The model page includes a prefilled GitHub issue link for reporting stale or missing entries; anonymous users are not offered a workflow or commit trigger.
+
+Each checked item represents an exact catalog model and version and becomes a separate `GlobalStandard` deployment with:
 
 - A unique deployment name.
 - A positive whole-number capacity.
@@ -50,7 +65,7 @@ Open `wizard/index.html` in a browser. Each checked item represents an exact cat
 - A displayed hosting boundary.
 - `NoAutoUpgrade` version pinning.
 
-The wizard currently highlights these as recommended starting choices; no billable model deployment is selected by default:
+The curated overlay currently marks these as recommended and tested starting choices; no billable model deployment is selected by default:
 
 | Claude Code family | Catalog model | Exact version | Default deployment name | Expected hosting boundary |
 |---|---|---:|---|---|
@@ -58,7 +73,7 @@ The wizard currently highlights these as recommended starting choices; no billab
 | Haiku | `claude-haiku-4-5` | `2` | `claude-haiku-4-5` | Azure infrastructure |
 | Opus | `claude-opus-4-8` | `2` | `claude-opus-4-8` | Azure infrastructure |
 
-These are sample defaults, not an availability guarantee. Azure's live regional catalog, model metadata, SKU support, quota, commercial terms, and hosting information are authoritative at execution time. Stop if the engine's live output differs from what you are authorized to deploy.
+These are reviewed defaults, not an availability guarantee. Azure's live regional catalog, model metadata, SKU support, quota, commercial terms, and hosting information are authoritative at execution time. Stop if the engine's live output differs from what you are authorized to deploy.
 
 Claude Code routes the `sonnet`, `haiku`, and `opus` aliases to deployment names. Select one family default for every family you deploy. If you select multiple versions from one family, explicitly choose which deployment Claude Code should use by default.
 
@@ -66,15 +81,11 @@ Claude Code routes the `sonnet`, `haiku`, and `opus` aliases to deployment names
 
 In the wizard:
 
-1. Select every exact model version you intend to deploy.
-2. Set a unique deployment name and capacity for each selection.
-3. Choose one Claude Code default for every selected model family.
-4. Enter the subscription, resource group, supported region, globally unique Foundry account name, and project name.
-5. Choose whether the engine may assign the current user a least-privilege runtime role when no supported inherited role is effective.
-6. Enter the responsible legal organization, country code, and industry.
-7. Confirm authority for billable resources, Marketplace terms, and the displayed hosting boundaries.
-8. Review the exact versions, capacities, deployment names, family mappings, and Azure target.
-9. Download the dry-run launcher first.
+1. Enter the subscription, resource group, supported region, globally unique Foundry account name, and project name.
+2. Select every exact model version you intend to deploy, with a unique deployment name and capacity.
+3. Enter the responsible legal organization, country code, and industry, then acknowledge billable resources, Marketplace terms, and hosting boundaries.
+4. Choose one Claude Code default for every selected model family.
+5. Review the exact versions, capacities, deployment names, family mappings, and Azure target, then download the dry-run launcher first.
 
 The generated files are:
 
@@ -97,9 +108,57 @@ chmod +x ezdeploy-engine.sh
 bash claude-code-foundry-dry-run.sh
 ```
 
-The dry run validates authentication, subscription and tenant selection, account compatibility, exact catalog versions, `GlobalStandard` support, version-specific quota, existing deployments, requested incremental capacity, Marketplace information exposed by Azure, hosting boundaries, and Claude Code family defaults. It does not create resources, deployments, role assignments, or Marketplace agreements.
+The dry run validates authentication, subscription and tenant selection, account compatibility, exact regional catalog versions, lifecycle, `GlobalStandard` support, version-specific quota, existing deployments, requested incremental capacity, Marketplace information exposed by Azure, hosting boundaries, and Claude Code family defaults. It does not create resources, deployments, role assignments, or Marketplace agreements.
 
 If any live result differs from your approval, update the wizard selections, generate a new launcher, and repeat the dry run.
+
+Unsupported regional model/version/SKU selections and quota shortages stop before mutation. Where the live APIs provide enough information, the engine reports another supported snapshot region, other live versions in the same Claude family, and the maximum incremental capacity possible under current quota. It never silently skips a model, substitutes a version or SKU, changes region, or lowers capacity. Azure deployment API rejections preserve the exact service error and stop later model deployments.
+
+## Automated catalog refresh
+
+`.github/workflows/refresh-model-catalog.yml` runs daily and supports `workflow_dispatch`. It signs in with `azure/login@v2` and GitHub OIDC, queries:
+
+```bash
+az cognitiveservices model list --location eastus2 --subscription "$AZURE_SUBSCRIPTION_ID" --output json
+az cognitiveservices model list --location swedencentral --subscription "$AZURE_SUBSCRIPTION_ID" --output json
+```
+
+The generator normalizes duplicate API rows by `format|name|version` and duplicate SKUs by `name|usageName`. It requires nonempty eligible data for both regions and writes the snapshot atomically. A failed, empty, malformed, or region-incomplete refresh leaves the checked-in snapshot unchanged and opens or updates one GitHub issue. A valid change is pushed only to `automation/model-catalog-refresh` and opens or updates an automated pull request; the workflow never commits directly to the default branch.
+
+Repository owner setup:
+
+1. Create a Microsoft Entra application or user-assigned managed identity for this repository.
+2. Add a GitHub federated credential scoped to this repository and the default branch used by scheduled and manually dispatched runs.
+3. On the designated reference subscription, assign a custom read-only role containing only `Microsoft.CognitiveServices/locations/models/read`.
+4. Add repository Actions variables named `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and `AZURE_SUBSCRIPTION_ID`. These identifiers are not client secrets; no Azure client secret is used.
+5. In **Settings > Actions > General**, set default workflow permissions to read-only and enable **Allow GitHub Actions to create and approve pull requests**. If organization policy prevents this, replace the PR step's `GITHUB_TOKEN` with a narrowly scoped GitHub App token.
+
+The branch-scoped federated credential subject for this repository is:
+
+```text
+repo:cgero-msft/claude-code-foundry-ezdeploy:ref:refs/heads/main
+```
+
+Run manual dispatches from the default branch so they use the same trust. A minimal custom role definition uses the reference subscription as its only assignable scope:
+
+```json
+{
+  "Name": "Foundry Regional Model Catalog Reader",
+  "IsCustom": true,
+  "Description": "Read only the regional Microsoft Foundry model catalog.",
+  "Actions": [
+    "Microsoft.CognitiveServices/locations/models/read"
+  ],
+  "NotActions": [],
+  "DataActions": [],
+  "NotDataActions": [],
+  "AssignableScopes": [
+    "/subscriptions/<reference-subscription-id>"
+  ]
+}
+```
+
+The reference identity should not receive Contributor, Owner, deployment, quota-write, or resource-write permissions. The current workflow uses repository Actions variables and a branch-scoped federated credential; it does not declare a GitHub environment.
 
 ## Confirm and deploy
 
@@ -192,6 +251,7 @@ On Windows, run from the repository root in PowerShell. The wrapper uses Git Bas
 On Linux, run the wizard and engine suites directly:
 
 ```bash
+node tests/catalog-generator-regression.js scripts/generate-model-catalog.js
 node tests/wizard-regression.js wizard/index.html
 bash tests/engine-regression.sh scripts/ezdeploy-engine.sh
 ```

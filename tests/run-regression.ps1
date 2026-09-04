@@ -8,8 +8,10 @@ $Engine = Join-Path $Root 'scripts\ezdeploy-engine.sh'
 $Wizard = Join-Path $Root 'wizard\index.html'
 $EngineTests = Join-Path $Tests 'engine-regression.sh'
 $WizardTests = Join-Path $Tests 'wizard-regression.js'
+$CatalogTests = Join-Path $Tests 'catalog-generator-regression.js'
+$CatalogGenerator = Join-Path $Root 'scripts\generate-model-catalog.js'
 
-foreach ($Path in @($Engine, $Wizard, $EngineTests, $WizardTests)) {
+foreach ($Path in @($Engine, $Wizard, $EngineTests, $WizardTests, $CatalogTests, $CatalogGenerator)) {
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
         throw "Required test input is missing: $Path"
     }
@@ -27,6 +29,12 @@ $GitBashCandidates = @(
 $GitBash = $GitBashCandidates |
     Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
     Select-Object -First 1
+
+Write-Host 'Running catalog generator regression tests with Node.js...'
+& $Node.Source $CatalogTests $CatalogGenerator
+if ($LASTEXITCODE -ne 0) {
+    throw "Catalog generator regression tests failed with exit code $LASTEXITCODE."
+}
 
 Write-Host 'Running wizard regression tests with Node.js...'
 & $Node.Source $WizardTests $Wizard
