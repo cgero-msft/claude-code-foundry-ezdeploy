@@ -39,12 +39,14 @@ jobs:
       - name: Log in to Azure with OIDC
         uses: azure/login@v2
         with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Query and generate catalog
         shell: bash
+        env:
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         run: |
           set -Eeuo pipefail
           mkdir -p .tmp/catalog-refresh
@@ -59,7 +61,7 @@ jobs:
             printf 'Querying %s...\n' "$region"
             az cognitiveservices model list \
               --location "$region" \
-              --subscription "${{ vars.AZURE_SUBSCRIPTION_ID }}" \
+              --subscription "$AZURE_SUBSCRIPTION_ID" \
               --output json >".tmp/catalog-refresh/${region}.json"
             test -s ".tmp/catalog-refresh/${region}.json"
           done
