@@ -32,6 +32,8 @@ install-claude-code-windows.ps1
 /deployment-manifest*.json
 *.bicep.parameters.json
 parameters.generated.json
+/infra/*.json
+/.azure/
 
 # Local test output and temporary artifacts
 /generated-package/
