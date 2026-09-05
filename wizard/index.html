@@ -74,11 +74,23 @@
     .nav{width:100%;display:flex;align-items:center;gap:9px;border:0;background:transparent;color:var(--cp-text);padding:10px;border-radius:.625rem;text-align:left}
     .nav.active{background:var(--cp-surface);color:var(--cp-link);box-shadow:inset 3px 0 0 var(--cp-link)}.num{width:24px;height:24px;border:1px solid var(--cp-border);border-radius:50%;display:grid;place-items:center}
     .page{max-width:1040px;margin:auto;padding:36px 40px 70px}.crumb{font-size:12px;color:var(--cp-text-muted);margin-bottom:14px}h1{font-size:30px;margin:0 0 8px}h2{font-size:21px;margin:0 0 7px}h3{margin:0 0 5px;font-size:15px}p{margin:0;color:var(--cp-text-muted);line-height:1.55}
-    .panel,.model-card{background:var(--cp-surface);border:1px solid var(--cp-border);border-radius:16px;box-shadow:0 0 2px var(--cp-border),0 1px 2px var(--cp-border)}
+    .panel{background:var(--cp-surface);border:1px solid var(--cp-border);border-radius:16px;box-shadow:0 0 2px var(--cp-border),0 1px 2px var(--cp-border)}
     .panel{padding:22px;margin-top:22px}.step{display:none}.step.active{display:block}
-    .model-list{display:grid;gap:12px;margin-top:18px}.model-card{padding:16px;min-width:0}.model-card.selected{border-color:var(--cp-accent);box-shadow:inset 0 0 0 1px var(--cp-accent);background:var(--cp-accent-soft)}
-    .model-heading{display:flex;align-items:flex-start;gap:10px}.model-heading input{width:auto;margin-top:3px}.model-title{min-width:0;flex:1}.model-title code{overflow-wrap:anywhere}.model-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
-    .model-controls{display:grid;grid-template-columns:minmax(120px,160px) minmax(210px,1fr) minmax(210px,1fr);gap:14px;margin-top:14px;padding-top:14px;border-top:1px solid var(--cp-border)}.model-controls input[type="radio"]{width:auto;margin-right:6px}.default-label{display:flex;align-items:center;font-weight:600;margin:28px 0 0}
+    .list-toolbar{display:grid;gap:7px;margin-top:16px;padding:11px 14px;background:var(--cp-surface-soft);border-radius:.625rem}.list-toolbar .hint{margin-top:0}
+    .model-list{display:grid;gap:18px;margin-top:18px}
+    .family{border:1px solid var(--cp-border);border-radius:16px;overflow:hidden;background:var(--cp-surface);min-width:0}
+    .family-header{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:12px 16px;background:var(--cp-bg-elevated)}
+    .family-name{font-size:15px;font-weight:650}.family-role{font-size:12px;color:var(--cp-text-muted)}
+    .family-count{margin-left:auto;font-size:11px;border:1px solid var(--cp-border);border-radius:.625rem;padding:3px 9px;color:var(--cp-text-muted);white-space:nowrap}.family-count.has-selection{border-color:var(--cp-accent);color:var(--cp-accent);font-weight:600}
+    .version-row{border-top:1px solid var(--cp-border);min-width:0}.version-row.selected{background:var(--cp-accent-soft);box-shadow:inset 3px 0 0 var(--cp-accent)}
+    .row-main{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 16px}.row-main input{width:auto;flex:0 0 auto}
+    .row-title h3{display:inline;font-size:14px}.row-title .ver{color:var(--cp-text-muted);font-weight:400}
+    .row-id{font-size:12px;color:var(--cp-text-soft);overflow-wrap:anywhere}
+    .row-tags{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+    .model-controls{display:none;grid-template-columns:minmax(120px,160px) minmax(210px,1fr) auto;gap:14px;align-items:end;padding:0 16px 14px 42px}.version-row.selected .model-controls{display:grid}.model-controls input[type="radio"]{width:auto;margin-right:6px}.default-label{display:flex;align-items:center;font-weight:600;margin:0;padding-bottom:9px;white-space:nowrap}
+    details.older summary{list-style:none;cursor:pointer;padding:10px 16px;border-top:1px solid var(--cp-border);color:var(--cp-link);font-weight:600;font-size:13px}
+    details.older summary::-webkit-details-marker{display:none}details.older summary::before{content:"\25B8  "}details.older[open] summary::before{content:"\25BE  "}
+    .selection-summary{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:18px;padding:12px 15px;border:1px solid var(--cp-border);border-radius:.625rem;background:var(--cp-surface-soft)}.selection-summary b{font-weight:650}.selection-summary .empty{color:var(--cp-text-soft)}
     .fields{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px}.full{grid-column:1/-1}label{font-weight:600;display:block;margin-bottom:6px}
     input,select{width:100%;padding:9px 10px;border:1px solid var(--cp-border-strong);border-radius:.625rem;background:var(--cp-surface);color:var(--cp-text)}.hint{font-size:12px;color:var(--cp-text-soft);margin-top:5px}
     .checkline{display:flex;align-items:flex-start;gap:9px;font-weight:400;line-height:1.45}.checkline input{width:auto;margin-top:3px;flex:0 0 auto}
@@ -87,7 +99,7 @@
     .summary{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0}.summary div{padding:12px;background:var(--cp-surface-soft);border-radius:.625rem}.summary small{display:block;color:var(--cp-text-muted);text-transform:uppercase}.summary span{display:block;margin-top:4px;font-weight:600;overflow-wrap:anywhere}
     .review-models{display:grid;gap:10px;margin:18px 0}.review-model{padding:14px;background:var(--cp-surface-soft);border-radius:.625rem}.review-model h3{overflow-wrap:anywhere}.review-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px}.review-grid small{display:block;color:var(--cp-text-muted);text-transform:uppercase}.review-grid span{display:block;margin-top:3px;overflow-wrap:anywhere}
     pre{max-width:100%;padding:15px;background:var(--cp-bg-elevated);border:1px solid var(--cp-border);border-radius:.625rem;white-space:pre-wrap;overflow:auto;overflow-wrap:anywhere;font-size:12px}
-    @media(max-width:800px){.layout{grid-template-columns:1fr}aside{display:none}.page{padding:25px 18px;min-width:0}.fields,.summary,.model-controls,.review-grid{grid-template-columns:1fr}.full{grid-column:auto}.default-label{margin-top:0}.right{width:100%}.right .btn{flex:1 1 180px}}
+    @media(max-width:800px){.layout{grid-template-columns:1fr}aside{display:none}.page{padding:25px 18px;min-width:0}.fields,.summary,.model-controls,.review-grid{grid-template-columns:1fr}.full{grid-column:auto}.model-controls{padding-left:16px}.default-label{margin-top:0;padding-bottom:0;white-space:normal}.row-tags{margin-left:0;width:100%;justify-content:flex-start}.family-count{margin-left:0}.right{width:100%}.right .btn{flex:1 1 180px}}
   </style>
 </head>
 <body>
@@ -120,11 +132,13 @@
 
       <section class="step" data-step="1"><div class="panel"><h2>Select exact model versions</h2><p>No billable model deployment is selected by default. This anonymous catalog is a checked-in snapshot from a reference subscription; your Cloud Shell dry run remains authoritative.</p>
         <div class="notice prominent hidden" id="catalogStatus"><b id="catalogStatusTitle">Catalog warning</b><p id="catalogStatusMessage"></p></div>
-        <div class="fields">
-          <div class="full"><label class="checkline"><input id="includePreview" type="checkbox">Show Preview models. Preview entries remain unselected and require an explicit opt-in here before they appear.</label></div>
+        <div class="list-toolbar">
+          <label class="checkline"><input id="includePreview" type="checkbox">Show Preview models. Preview entries remain unselected and require an explicit opt-in here before they appear.</label>
+          <div class="hint">Versions are grouped by the Claude Code family alias they serve; earlier generations sit behind each group's older-versions control. Availability comes from the reference snapshot and every selection is re-checked during the live Cloud Shell preflight.</div>
         </div>
         <div class="notice hidden" id="selectionNotice"><b>Selections reset</b><p id="selectionNoticeMessage"></p></div>
         <div class="model-list" id="modelList"></div>
+        <div class="selection-summary" id="selectionSummary"></div>
         <div class="notice"><b>Version pinning and quota</b><p>Each selection becomes a distinct Global Standard deployment pinned with <code>NoAutoUpgrade</code>. The engine validates the exact version, regional SKU, version-specific quota pool, and requested incremental capacity before any mutation.</p><p><a id="reportCatalog" href="https://github.com/cgero-msft/claude-code-foundry-ezdeploy/issues/new" target="_blank" rel="noopener noreferrer">Report a stale or missing catalog entry</a>. This opens a prefilled issue; the anonymous wizard cannot trigger commits or refresh workflows.</p></div>
       </div></section>
 
@@ -375,7 +389,25 @@
       const family=modelMetadata[input.dataset.key].family;
       const enabled=[...document.querySelectorAll(`input[name="default-${family}"]:not(:disabled)`)];
       if(enabled.length&&!enabled.some(radio=>radio.checked))enabled[0].checked=true;
-      renderDefaults()
+      renderDefaults();
+      renderSelectionSummary()
+    }
+    function renderSelectionSummary(){
+      const models=selectedModels(),defaults=defaultModels();
+      ["sonnet","haiku","opus"].forEach(family=>{
+        const chip=document.querySelector(`[data-family-count="${family}"]`);
+        if(!chip)return;
+        const count=models.filter(model=>model.family===family).length;
+        chip.textContent=count?`${count} selected`:"None selected";
+        chip.classList.toggle("has-selection",count>0)
+      });
+      const bar=$("selectionSummary");
+      if(!models.length){
+        bar.innerHTML='<span class="empty">Nothing selected yet. Choose at least one exact model version to continue; nothing deploys until you approve the live Cloud Shell run.</span>';
+        return
+      }
+      const defaultKeys=new Set(Object.values(defaults).filter(Boolean).map(model=>model.key));
+      bar.innerHTML=`<b>${models.length} deployment${models.length>1?"s":""} will be created</b>`+models.map(model=>`<span class="tag">${escape(model.deployment)}${defaultKeys.has(model.key)?` · ${escape(model.family)} default`:""}</span>`).join("")
     }
     function renderCatalogStatus(){
       const messages=[];
@@ -387,23 +419,44 @@
       $("catalogStatusMessage").textContent=messages.join(" ");
       $("reportCatalog").href=staleIssueUrl()
     }
+    const familyInfo={
+      sonnet:{title:"Sonnet",role:"Balanced daily driver — the primary Claude Code alias"},
+      haiku:{title:"Haiku",role:"Fast and economical — background tasks and quick edits"},
+      opus:{title:"Opus",role:"Deepest reasoning — complex, long-horizon work"}
+    };
+    function modelRow(model){
+      const badges=[
+        model.lifecycle==="Preview"?'<span class="tag preview">Preview</span>':"",
+        model.azureDefault?'<span class="tag azure-default">Azure Default</span>':"",
+        model.recommended?'<span class="tag recommended">EZDeploy Recommended</span>':"",
+        model.tested?'<span class="tag tested">EZDeploy Tested</span>':""
+      ].join("");
+      return`<article class="version-row" data-model-card="${escape(model.key)}"><div class="row-main"><input class="model-check" id="model-${escape(model.key)}" type="checkbox" data-key="${escape(model.key)}"><label class="row-title" for="model-${escape(model.key)}"><h3>${escape(model.label)} <span class="ver">@ ${escape(model.version)}</span></h3></label><code class="row-id">${escape(model.model)}</code><span class="row-tags">${badges}<span class="tag">${escape(model.hosting)}</span></span></div><div class="model-controls"><div><label for="capacity-${escape(model.key)}">Capacity</label><input class="model-capacity" id="capacity-${escape(model.key)}" data-key="${escape(model.key)}" type="number" min="1" step="1" value="10" disabled></div><div><label for="deployment-${escape(model.key)}">Deployment name</label><input class="deployment-name" id="deployment-${escape(model.key)}" data-key="${escape(model.key)}" value="${escape(model.deployment)}" disabled></div><label class="default-label"><input class="default-model" id="default-${escape(model.key)}" type="radio" name="default-${escape(model.family)}" value="${escape(model.key)}" disabled>Claude Code ${escape(model.family)} default</label></div></article>`
+    }
     function renderModelCards(){
       const previous=selectedModels();
       const previousDefaults=defaultModels();
       const models=catalogModelsForRegion(catalogState,val("region")||"eastus2",$("includePreview").checked);
       Object.keys(modelMetadata).forEach(key=>delete modelMetadata[key]);
       models.forEach(model=>{modelMetadata[model.key]=model});
-      $("modelList").innerHTML=models.map(model=>{
-        const badges=[
-          model.lifecycle==="Preview"?'<span class="tag preview">Preview</span>':"",
-          model.azureDefault?'<span class="tag azure-default">Azure Default</span>':"",
-          model.recommended?'<span class="tag recommended">EZDeploy Recommended</span>':"",
-          model.tested?'<span class="tag tested">EZDeploy Tested</span>':""
-        ].join("");
-        return`<article class="model-card" data-model-card="${escape(model.key)}"><div class="model-heading"><input class="model-check" id="model-${escape(model.key)}" type="checkbox" data-key="${escape(model.key)}"><label class="model-title" for="model-${escape(model.key)}"><h3>${escape(model.label)} @ ${escape(model.version)}</h3><p>Model <code>${escape(model.model)}</code></p></label></div><div class="model-meta"><span class="tag">${escape(model.family)} family</span><span class="tag">${escape(model.hosting)}</span><span class="tag">Reference subscription; live check required</span>${badges}</div><div class="model-controls"><div><label for="capacity-${escape(model.key)}">Capacity</label><input class="model-capacity" id="capacity-${escape(model.key)}" data-key="${escape(model.key)}" type="number" min="1" step="1" value="10" disabled></div><div><label for="deployment-${escape(model.key)}">Deployment name</label><input class="deployment-name" id="deployment-${escape(model.key)}" data-key="${escape(model.key)}" value="${escape(model.deployment)}" disabled></div><label class="default-label"><input class="default-model" id="default-${escape(model.key)}" type="radio" name="default-${escape(model.family)}" value="${escape(model.key)}" disabled>Claude Code ${escape(model.family)} default</label></div></article>`
+      const previousKeys=new Set(previous.map(model=>model.key));
+      const families=[];
+      models.forEach(model=>{
+        let group=families.find(entry=>entry.family===model.family);
+        if(!group){group={family:model.family,models:[]};families.push(group)}
+        group.models.push(model)
+      });
+      $("modelList").innerHTML=families.map(group=>{
+        const latestName=group.models[0].model;
+        const visible=group.models.filter(model=>model.model===latestName||model.recommended||model.tested||model.lifecycle==="Preview");
+        const older=group.models.filter(model=>!visible.includes(model));
+        const info=familyInfo[group.family]||{title:group.family,role:""};
+        const olderHtml=older.length?`<details class="older"${older.some(model=>previousKeys.has(model.key))?" open":""}><summary>Show ${older.length} older version${older.length>1?"s":""}</summary>${older.map(modelRow).join("")}</details>`:"";
+        return`<section class="family" data-family="${escape(group.family)}"><div class="family-header"><span class="family-name">${escape(info.title)}</span><span class="family-role">${escape(info.role)}</span><span class="family-count" data-family-count="${escape(group.family)}">None selected</span></div>${visible.map(modelRow).join("")}${olderHtml}</section>`
       }).join("")||'<div class="notice prominent"><b>No eligible models in this view</b><p>Check the selected region or explicitly opt in to Preview models. The live Cloud Shell catalog remains authoritative.</p></div>';
       document.querySelectorAll(".model-check").forEach(input=>input.addEventListener("change",()=>syncModelSelection(input)));
-      document.querySelectorAll(".default-model").forEach(input=>input.addEventListener("change",renderDefaults));
+      document.querySelectorAll(".default-model").forEach(input=>input.addEventListener("change",()=>{renderDefaults();renderSelectionSummary()}));
+      document.querySelectorAll(".deployment-name").forEach(input=>input.addEventListener("input",renderSelectionSummary));
       previous.filter(model=>modelMetadata[model.key]).forEach(model=>{
         const checkbox=$(`model-${model.key}`);
         checkbox.checked=true;
@@ -418,7 +471,8 @@
         if(modelMetadata[model.key])$(`default-${model.key}`).checked=true
       });
       renderCatalogStatus();
-      renderDefaults()
+      renderDefaults();
+      renderSelectionSummary()
     }
     function initialize(){
       renderModelCards();
