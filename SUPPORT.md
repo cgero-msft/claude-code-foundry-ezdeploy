@@ -18,6 +18,8 @@ Use the private security-reporting process described in [SECURITY.md](SECURITY.m
 
 For inference 401 or 403 errors, verify the tenant and account scope and confirm the user has a runtime role recognized by the engine: Cognitive Services User, Cognitive Services OpenAI User, Cognitive Services OpenAI Contributor, Foundry User, Foundry Owner, Foundry Project Manager, Azure AI Project Manager, Azure AI User, Azure AI Owner, or Azure AI Developer. Owner, Contributor, Cognitive Services Contributor, Foundry Account Owner, and Azure AI Account Owner are management-plane roles and are not sufficient by themselves.
 
+For the APIM-governed profile, also verify the generated `ANTHROPIC_FOUNDRY_BASE_URL`, caller-token audience, APIM policy and named values, approved model route, APIM system-assigned identity, and its `Cognitive Services User` assignment on the Foundry account. Do not post tenant-specific policy values or tokens in a public issue.
+
 New accounts are Entra-only. Reused accounts preserve their existing local-authentication setting by default. If `--disable-local-auth-on-reuse` was selected, check whether an existing workload still depends on account keys; the engine requires explicit confirmation because disabling local authentication can break that workload.
 
 ## Product and service support

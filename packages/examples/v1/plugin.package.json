@@ -1,0 +1,84 @@
+{
+  "schemaVersion": "1.0",
+  "packageType": "plugin",
+  "identity": {
+    "id": "org.example.governed-tools",
+    "name": "Sanitized governed tools plugin",
+    "version": "0.9.0"
+  },
+  "compatibility": {
+    "hosts": [
+      {
+        "name": "claude-code",
+        "versionRange": ">=1.0.0"
+      }
+    ],
+    "profiles": ["apim-governed"]
+  },
+  "entrypoint": "dist/index.js",
+  "endpoints": [
+    {
+      "id": "summarize",
+      "path": "/tools/summarize",
+      "method": "POST"
+    }
+  ],
+  "permissions": [
+    {
+      "name": "foundry.inference",
+      "access": "invoke",
+      "justification": "Invoke only the deployments selected by the governance profile."
+    }
+  ],
+  "allowedResources": [
+    {
+      "type": "foundry-deployment",
+      "selector": "approved-summarization-deployment",
+      "actions": ["invoke"]
+    },
+    {
+      "type": "https-origin",
+      "selector": "https://gateway.example.invalid",
+      "actions": ["invoke"]
+    }
+  ],
+  "provenance": {
+    "sourceRepository": "https://github.com/example/governed-tools-plugin",
+    "sourceRevision": "3333333333333333333333333333333333333333",
+    "buildSystem": "github-actions",
+    "builtAt": "2026-09-01T12:00:00Z"
+  },
+  "integrity": {
+    "digest": {
+      "algorithm": "sha256",
+      "value": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    "signing": {
+      "required": true,
+      "method": "x509",
+      "identity": "CN=Example Package Signing",
+      "transparencyLogUrl": "https://transparency.example.invalid"
+    }
+  },
+  "lifecycle": {
+    "state": "draft",
+    "since": "2026-09-01T12:00:00Z"
+  },
+  "ownership": {
+    "team": "Example Extensions Team",
+    "contact": "extensions@example.invalid",
+    "repository": "https://github.com/example/governed-tools-plugin"
+  },
+  "tenantEligibility": {
+    "mode": "policy-evaluated",
+    "policyReference": "governance/tenant-eligibility/governed-tools",
+    "requiredClaims": ["tid", "oid"]
+  },
+  "deprecation": {
+    "status": "not-announced",
+    "announcedAt": null,
+    "effectiveAt": null,
+    "replacementPackageId": null,
+    "message": null
+  }
+}

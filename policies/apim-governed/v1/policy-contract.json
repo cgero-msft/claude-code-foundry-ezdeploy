@@ -1,0 +1,71 @@
+{
+  "contractVersion": "1.0.0",
+  "profile": "apim-governed",
+  "activationState": "deployed-by-cli",
+  "activeByDefault": true,
+  "policyFile": "policy.xml",
+  "configuration": {
+    "namedValues": [
+      {
+        "name": "entra-tenant-id",
+        "secret": false,
+        "purpose": "Microsoft Entra tenant whose v2 tokens are accepted."
+      },
+      {
+        "name": "entra-audience",
+        "secret": false,
+        "purpose": "Microsoft Foundry token audience used by Claude Code."
+      },
+      {
+        "name": "allowed-principal-ids",
+        "secret": false,
+        "purpose": "Semicolon-delimited allowlist of Microsoft Entra user or service-principal object IDs."
+      },
+      {
+        "name": "rate-limit-calls",
+        "secret": false,
+        "purpose": "Maximum requests per principal in each renewal window."
+      },
+      {
+        "name": "rate-limit-renewal-seconds",
+        "secret": false,
+        "purpose": "Per-principal rate-limit renewal window in seconds."
+      },
+      {
+        "name": "approved-model-deployment-routes",
+        "secret": false,
+        "purpose": "Semicolon-delimited model=deployment allowlist containing no tenant identifiers."
+      },
+      {
+        "name": "foundry-backend-id",
+        "secret": false,
+        "purpose": "APIM backend entity configured for the approved Foundry endpoint."
+      },
+      {
+        "name": "foundry-managed-identity-resource",
+        "secret": false,
+        "purpose": "Managed identity token audience for Foundry inference."
+      },
+      {
+        "name": "backend-timeout-seconds",
+        "secret": false,
+        "purpose": "Bounded Foundry request timeout."
+      }
+    ],
+    "prerequisites": [
+      "Identify every Microsoft Entra principal authorized to invoke the gateway.",
+      "Deploy the APIM service with its system-assigned managed identity.",
+      "Grant the APIM identity Cognitive Services User on the Foundry account.",
+      "Create the Foundry backend, API, POST wildcard operation, and non-secret named values.",
+      "Review approved model-to-deployment routes before typing ACCEPT."
+    ]
+  },
+  "securityProperties": {
+    "callerAuthentication": "Microsoft Entra JWT with explicit principal allowlist",
+    "backendAuthentication": "system-assigned managed identity",
+    "rateLimitKey": "validated oid claim with sub fallback",
+    "routingSource": "operator-configured model-to-deployment allowlist",
+    "embeddedTenantData": false,
+    "embeddedSecrets": false
+  }
+}

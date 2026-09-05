@@ -13,10 +13,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  wizard-regression:
-    name: Node wizard regression
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
+  node-regression:
+    name: Node contract, CLI, and wizard regression (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
@@ -30,6 +36,24 @@ jobs:
         run: |
           node tests/catalog-generator-regression.js scripts/generate-model-catalog.js
           node tests/wizard-regression.js wizard/index.html
+          node tests/manifest-regression.js scripts/validate-manifest.js
+          node tests/governance-regression.js
+          node tests/cli-regression.js scripts/ezdeploy.js
+
+  bicep-validation:
+    name: Bicep validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Install Bicep
+        run: az bicep install
+
+      - name: Compile templates and parameter files
+        shell: pwsh
+        run: ./tests/bicep-regression.ps1
 
   bash-syntax:
     name: Bash syntax

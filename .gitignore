@@ -8,6 +8,8 @@
 claude-foundry.env
 claude-foundry.ps1
 deployment-report*.json
+orchestration-report*.json
+orchestration-*.json
 vscode-settings.snippet.json
 install-claude-code-local.sh
 install-claude-code-windows.ps1
@@ -27,6 +29,11 @@ install-claude-code-windows.ps1
 /payloads/
 *.report.json
 /reports/
+/deployment-manifest*.json
+*.bicep.parameters.json
+parameters.generated.json
+/infra/*.json
+/.azure/
 
 # Local test output and temporary artifacts
 /generated-package/
@@ -35,6 +42,8 @@ install-claude-code-windows.ps1
 /tmp/
 /fake-bin/
 ezdeploy-regression.*
+ezdeploy-cli-*
+ezdeploy-arm-body-*
 *.tmp
 *.temp
 
