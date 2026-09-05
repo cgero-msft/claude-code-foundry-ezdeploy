@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "1.0",
+  "packageType": "skill",
+  "identity": {
+    "id": "org.example.foundry-review",
+    "name": "Sanitized Foundry review skill",
+    "version": "2.0.1"
+  },
+  "compatibility": {
+    "hosts": [
+      {
+        "name": "claude-code",
+        "versionRange": ">=1.0.0"
+      }
+    ],
+    "profiles": ["direct", "apim-governed"]
+  },
+  "entrypoint": "skills/foundry-review/SKILL.md",
+  "permissions": [
+    {
+      "name": "workspace.read",
+      "access": "read",
+      "justification": "Review files selected by the operator."
+    }
+  ],
+  "allowedResources": [
+    {
+      "type": "workspace-path",
+      "selector": "src/**",
+      "actions": ["read"]
+    }
+  ],
+  "provenance": {
+    "sourceRepository": "https://github.com/example/foundry-review-skill",
+    "sourceRevision": "2222222222222222222222222222222222222222",
+    "buildSystem": "github-actions",
+    "builtAt": "2026-09-01T12:00:00Z"
+  },
+  "integrity": {
+    "digest": {
+      "algorithm": "sha256",
+      "value": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "signing": {
+      "required": true,
+      "method": "sigstore",
+      "identity": "https://github.com/example/foundry-review-skill/.github/workflows/release.yml@refs/tags/v2.0.1",
+      "transparencyLogUrl": "https://rekor.example.invalid"
+    }
+  },
+  "lifecycle": {
+    "state": "active",
+    "since": "2026-09-01T12:00:00Z"
+  },
+  "ownership": {
+    "team": "Example Developer Experience Team",
+    "contact": "developer-experience@example.invalid",
+    "repository": "https://github.com/example/foundry-review-skill"
+  },
+  "tenantEligibility": {
+    "mode": "all-configured-tenants",
+    "policyReference": "governance/tenant-eligibility/default"
+  },
+  "deprecation": {
+    "status": "not-announced",
+    "announcedAt": null,
+    "effectiveAt": null,
+    "replacementPackageId": null,
+    "message": null
+  }
+}

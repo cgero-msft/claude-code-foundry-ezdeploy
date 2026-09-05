@@ -1,0 +1,216 @@
+{
+  "schemaVersion": "1.0",
+  "release": {
+    "version": "1.0.0",
+    "artifact": "claude-code-foundry-ezdeploy"
+  },
+  "customer": {
+    "id": "fabrikam-demo",
+    "displayName": "Fabrikam Demo",
+    "legalOrganization": "Fabrikam Demo Ltd",
+    "countryCode": "SE",
+    "industry": "technology"
+  },
+  "environment": {
+    "name": "fabrikam-prod",
+    "classification": "production",
+    "description": "Sanitized APIM-governed example"
+  },
+  "architecture": {
+    "profile": "apim-governed",
+    "status": "deployable",
+    "deployable": true
+  },
+  "azure": {
+    "tenantId": "33333333-3333-4333-8333-333333333333",
+    "subscriptionId": "44444444-4444-4444-8444-444444444444",
+    "resourceGroup": "rg-fabrikam-claude-prod",
+    "location": "swedencentral",
+    "foundry": {
+      "accountName": "fabrikam-claude-prod",
+      "projectName": "claude-code",
+      "reuseExisting": false
+    },
+    "apim": {
+      "serviceName": "apim-fabrikam-claude-prod",
+      "reuseExisting": false,
+      "publisherName": "Fabrikam AI Platform",
+      "publisherEmail": "ai-platform@example.invalid",
+      "sku": {
+        "name": "StandardV2",
+        "capacity": 1
+      },
+      "publicNetworkAccess": "Enabled",
+      "api": {
+        "name": "claude-foundry",
+        "path": "anthropic",
+        "callerAudience": "https://cognitiveservices.azure.com",
+        "allowedPrincipalIds": [
+          "66666666-6666-4666-8666-666666666666"
+        ],
+        "rateLimitCalls": 60,
+        "rateLimitRenewalSeconds": 60,
+        "backendTimeoutSeconds": 120
+      }
+    }
+  },
+  "models": [
+    {
+      "family": "sonnet",
+      "publisher": "Anthropic",
+      "format": "Anthropic",
+      "name": "claude-sonnet-5",
+      "version": "2",
+      "sku": {
+        "name": "GlobalStandard",
+        "capacity": 20
+      },
+      "deployment": {
+        "name": "claude-sonnet-5-prod",
+        "versionUpgradeOption": "NoAutoUpgrade"
+      }
+    },
+    {
+      "family": "haiku",
+      "publisher": "Anthropic",
+      "format": "Anthropic",
+      "name": "claude-haiku-4-5",
+      "version": "2",
+      "sku": {
+        "name": "GlobalStandard",
+        "capacity": 10
+      },
+      "deployment": {
+        "name": "claude-haiku-4-5-prod",
+        "versionUpgradeOption": "NoAutoUpgrade"
+      }
+    },
+    {
+      "family": "opus",
+      "publisher": "Anthropic",
+      "format": "Anthropic",
+      "name": "claude-opus-4-8",
+      "version": "2",
+      "sku": {
+        "name": "GlobalStandard",
+        "capacity": 10
+      },
+      "deployment": {
+        "name": "claude-opus-4-8-prod",
+        "versionUpgradeOption": "NoAutoUpgrade"
+      }
+    }
+  ],
+  "familyDefaults": {
+    "sonnet": "claude-sonnet-5-prod",
+    "haiku": "claude-haiku-4-5-prod",
+    "opus": "claude-opus-4-8-prod"
+  },
+  "identities": [
+    {
+      "name": "authorized-caller",
+      "type": "entra-principal",
+      "purpose": "Example Microsoft Entra principal authorized by the APIM policy",
+      "objectId": "66666666-6666-4666-8666-666666666666"
+    },
+    {
+      "name": "apim-gateway",
+      "type": "system-assigned",
+      "purpose": "APIM system-assigned identity for Foundry backend authentication"
+    }
+  ],
+  "personas": [
+    {
+      "name": "claude-code-developer",
+      "description": "Developer routed through the governed APIM endpoint",
+      "identity": "authorized-caller",
+      "roles": [
+        "Gateway Invoker"
+      ]
+    },
+    {
+      "name": "platform-operator",
+      "description": "Platform operator responsible for APIM and Foundry deployment health",
+      "identity": "authorized-caller",
+      "roles": [
+        "Monitoring Reader",
+        "API Management Service Contributor"
+      ]
+    },
+    {
+      "name": "apim-foundry-backend",
+      "description": "APIM workload identity authorized for Foundry inference",
+      "identity": "apim-gateway",
+      "roles": [
+        "Cognitive Services User"
+      ]
+    }
+  ],
+  "networking": {
+    "mode": "public",
+    "publicNetworkAccess": "Enabled",
+    "allowedCidrs": []
+  },
+  "governance": {
+    "dataClassification": "confidential",
+    "allowedRegions": [
+      "swedencentral"
+    ],
+    "localAuthentication": "disabled",
+    "marketplaceTermsAccepted": true,
+    "billableResourcesApproved": true,
+    "policyMode": "enforce"
+  },
+  "observability": {
+    "diagnosticSettings": true,
+    "logRetentionDays": 90,
+    "costAlerts": false
+  },
+  "secretReferences": [],
+  "packages": {
+    "mcpServers": [
+      {
+        "name": "enterprise-mcp",
+        "package": "@fabrikam/enterprise-mcp",
+        "version": "3.4.0",
+        "source": "npm",
+        "configurationSecretReferences": []
+      }
+    ],
+    "skills": [
+      {
+        "name": "foundry-operations",
+        "package": "fabrikam/foundry-operations",
+        "version": "2.1.0",
+        "source": "github-release"
+      }
+    ],
+    "plugins": [
+      {
+        "name": "governance-controls",
+        "package": "fabrikam/governance-controls",
+        "version": "1.5.2",
+        "source": "repository"
+      }
+    ]
+  },
+  "ownership": {
+    "owningTeam": "Fabrikam AI Platform",
+    "technicalContact": "ai-platform@example.invalid",
+    "businessOwner": "business-owner@example.invalid",
+    "costCenter": "DEMO-APIM-001"
+  },
+  "lifecycle": {
+    "stage": "planned",
+    "createdByRelease": "1.0.0",
+    "upgradePolicy": "approved-release",
+    "reviewAfter": "2026-12-31",
+    "expiresOn": "2027-12-31"
+  },
+  "cleanup": {
+    "strategy": "retain",
+    "requiresApproval": true,
+    "owner": "ai-platform@example.invalid",
+    "retainLogsDays": 365
+  }
+}

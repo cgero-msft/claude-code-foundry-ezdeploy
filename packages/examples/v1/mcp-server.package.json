@@ -1,0 +1,76 @@
+{
+  "schemaVersion": "1.0",
+  "packageType": "mcp-server",
+  "identity": {
+    "id": "org.example.catalog-mcp",
+    "name": "Sanitized catalog MCP server",
+    "version": "1.2.0"
+  },
+  "compatibility": {
+    "hosts": [
+      {
+        "name": "claude-code",
+        "versionRange": ">=1.0.0"
+      }
+    ],
+    "profiles": ["apim-governed"]
+  },
+  "endpoint": {
+    "url": "https://mcp.example.invalid/mcp",
+    "transport": "streamable-http",
+    "healthPath": "/health"
+  },
+  "permissions": [
+    {
+      "name": "catalog.query",
+      "access": "invoke",
+      "justification": "Query the sanitized model catalog."
+    }
+  ],
+  "allowedResources": [
+    {
+      "type": "mcp-tool",
+      "selector": "catalog.search",
+      "actions": ["invoke"]
+    }
+  ],
+  "provenance": {
+    "sourceRepository": "https://github.com/example/catalog-mcp",
+    "sourceRevision": "1111111111111111111111111111111111111111",
+    "buildSystem": "github-actions",
+    "builtAt": "2026-09-01T12:00:00Z"
+  },
+  "integrity": {
+    "digest": {
+      "algorithm": "sha256",
+      "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "signing": {
+      "required": true,
+      "method": "sigstore",
+      "identity": "https://github.com/example/catalog-mcp/.github/workflows/release.yml@refs/tags/v1.2.0",
+      "transparencyLogUrl": "https://rekor.example.invalid"
+    }
+  },
+  "lifecycle": {
+    "state": "active",
+    "since": "2026-09-01T12:00:00Z"
+  },
+  "ownership": {
+    "team": "Example Platform Team",
+    "contact": "platform@example.invalid",
+    "repository": "https://github.com/example/catalog-mcp"
+  },
+  "tenantEligibility": {
+    "mode": "policy-evaluated",
+    "policyReference": "governance/tenant-eligibility/catalog-mcp",
+    "requiredClaims": ["tid", "oid"]
+  },
+  "deprecation": {
+    "status": "not-announced",
+    "announcedAt": null,
+    "effectiveAt": null,
+    "replacementPackageId": null,
+    "message": null
+  }
+}

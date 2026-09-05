@@ -1,0 +1,237 @@
+<!--
+  APIM governed profile policy, version 1.
+  The manifest-driven CLI creates the referenced backend, configures every
+  non-secret named value, and installs this policy after explicit approval.
+-->
+<policies>
+  <inbound>
+    <base />
+
+    <set-variable name="correlationId" value="@{
+      var supplied = context.Request.Headers.GetValueOrDefault(&quot;x-correlation-id&quot;, &quot;&quot;).Trim();
+      return !String.IsNullOrEmpty(supplied)
+        &amp;&amp; System.Text.RegularExpressions.Regex.IsMatch(supplied, &quot;^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$&quot;)
+          ? supplied
+          : context.RequestId.ToString();
+    }" />
+    <set-header name="x-correlation-id" exists-action="override">
+      <value>@((string)context.Variables["correlationId"])</value>
+    </set-header>
+
+    <validate-jwt
+      header-name="Authorization"
+      require-scheme="Bearer"
+      require-expiration-time="true"
+      require-signed-tokens="true"
+      clock-skew="60"
+      failed-validation-httpcode="401"
+      failed-validation-error-message="The access token is missing or invalid."
+      output-token-variable-name="validatedJwt">
+      <openid-config url="https://login.microsoftonline.com/{{entra-tenant-id}}/v2.0/.well-known/openid-configuration" />
+      <audiences>
+        <audience>{{entra-audience}}</audience>
+      </audiences>
+      <issuers>
+        <issuer>https://login.microsoftonline.com/{{entra-tenant-id}}/v2.0</issuer>
+        <issuer>https://sts.windows.net/{{entra-tenant-id}}/</issuer>
+      </issuers>
+      <required-claims>
+        <claim name="tid" match="all">
+          <value>{{entra-tenant-id}}</value>
+        </claim>
+      </required-claims>
+    </validate-jwt>
+
+    <set-variable name="principalId" value="@{
+      var jwt = (Jwt)context.Variables[&quot;validatedJwt&quot;];
+      var objectId = jwt.Claims.GetValueOrDefault(&quot;oid&quot;, new string[0]).FirstOrDefault();
+      if (!String.IsNullOrWhiteSpace(objectId))
+      {
+        return objectId;
+      }
+      return jwt.Claims.GetValueOrDefault(&quot;sub&quot;, new string[0]).FirstOrDefault() ?? &quot;&quot;;
+    }" />
+    <choose>
+      <when condition="@(
+        String.IsNullOrWhiteSpace((string)context.Variables[&quot;principalId&quot;])
+      )">
+        <return-response>
+          <set-status code="403" reason="Principal claim required" />
+          <set-header name="Content-Type" exists-action="override">
+            <value>application/json</value>
+          </set-header>
+          <set-header name="x-correlation-id" exists-action="override">
+            <value>@((string)context.Variables["correlationId"])</value>
+          </set-header>
+          <set-body>{"error":"principal_claim_required"}</set-body>
+        </return-response>
+      </when>
+    </choose>
+    <set-variable name="authorizedPrincipal" value="@{
+      var principalId = (string)context.Variables[&quot;principalId&quot;];
+      var allowed = &quot;{{allowed-principal-ids}}&quot;
+        .Split(new [] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+      return allowed.Any(candidate =>
+        String.Equals(candidate.Trim(), principalId, StringComparison.OrdinalIgnoreCase));
+    }" />
+    <choose>
+      <when condition="@(!(bool)context.Variables[&quot;authorizedPrincipal&quot;])">
+        <return-response>
+          <set-status code="403" reason="Principal not authorized" />
+          <set-header name="Content-Type" exists-action="override">
+            <value>application/json</value>
+          </set-header>
+          <set-header name="x-correlation-id" exists-action="override">
+            <value>@((string)context.Variables["correlationId"])</value>
+          </set-header>
+          <set-body>{"error":"principal_not_authorized"}</set-body>
+        </return-response>
+      </when>
+    </choose>
+
+    <rate-limit-by-key
+      calls="{{rate-limit-calls}}"
+      renewal-period="{{rate-limit-renewal-seconds}}"
+      counter-key="@((string)context.Variables[&quot;principalId&quot;])"
+      remaining-calls-header-name="x-ratelimit-remaining"
+      retry-after-header-name="retry-after" />
+
+    <set-variable name="requestedModel" value="@{
+      var body = context.Request.Body.As&lt;JObject&gt;(preserveContent: true);
+      return (string)body[&quot;model&quot;] ?? &quot;&quot;;
+    }" />
+    <set-variable name="approvedDeployment" value="@{
+      var requestedModel = (string)context.Variables[&quot;requestedModel&quot;];
+      var routes = &quot;{{approved-model-deployment-routes}}&quot;
+        .Split(new [] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+      foreach (var route in routes)
+      {
+        var separator = route.IndexOf('=');
+        if (separator &lt;= 0 || separator == route.Length - 1)
+        {
+          continue;
+        }
+        var model = route.Substring(0, separator).Trim();
+        var deployment = route.Substring(separator + 1).Trim();
+        if (String.Equals(model, requestedModel, StringComparison.Ordinal))
+        {
+          return deployment;
+        }
+      }
+      return &quot;&quot;;
+    }" />
+    <choose>
+      <when condition="@(
+        String.IsNullOrWhiteSpace((string)context.Variables[&quot;requestedModel&quot;])
+        || String.IsNullOrWhiteSpace((string)context.Variables[&quot;approvedDeployment&quot;])
+      )">
+        <return-response>
+          <set-status code="403" reason="Model route not approved" />
+          <set-header name="Content-Type" exists-action="override">
+            <value>application/json</value>
+          </set-header>
+          <set-header name="x-correlation-id" exists-action="override">
+            <value>@((string)context.Variables["correlationId"])</value>
+          </set-header>
+          <set-body>{"error":"model_route_not_approved"}</set-body>
+        </return-response>
+      </when>
+    </choose>
+    <set-body>@{
+      var body = context.Request.Body.As&lt;JObject&gt;(preserveContent: true);
+      body["model"] = (string)context.Variables["approvedDeployment"];
+      return body.ToString(Newtonsoft.Json.Formatting.None);
+    }</set-body>
+
+    <set-header name="Ocp-Apim-Subscription-Key" exists-action="delete" />
+    <set-header name="api-key" exists-action="delete" />
+    <set-header name="x-api-key" exists-action="delete" />
+    <set-header name="Cookie" exists-action="delete" />
+    <set-header name="x-ms-client-principal" exists-action="delete" />
+    <set-header name="x-ms-token-aad-id-token" exists-action="delete" />
+    <set-header name="x-forwarded-client-cert" exists-action="delete" />
+    <set-header name="Authorization" exists-action="delete" />
+
+    <set-header name="x-governance-profile" exists-action="override">
+      <value>apim-governed</value>
+    </set-header>
+    <set-header name="x-governance-policy-version" exists-action="override">
+      <value>1.0.0</value>
+    </set-header>
+    <set-header name="x-approved-model" exists-action="override">
+      <value>@((string)context.Variables["requestedModel"])</value>
+    </set-header>
+    <set-header name="x-approved-deployment" exists-action="override">
+      <value>@((string)context.Variables["approvedDeployment"])</value>
+    </set-header>
+
+    <trace source="apim-governed" severity="information">
+      <message>@(
+        "request-approved"
+        + "; correlationId=" + (string)context.Variables["correlationId"]
+        + "; api=" + context.Api.Id
+        + "; operation=" + context.Operation.Id
+        + "; model=" + (string)context.Variables["requestedModel"]
+        + "; deployment=" + (string)context.Variables["approvedDeployment"]
+      )</message>
+    </trace>
+
+    <set-backend-service backend-id="{{foundry-backend-id}}" />
+    <authentication-managed-identity
+      resource="{{foundry-managed-identity-resource}}"
+      ignore-error="false" />
+  </inbound>
+
+  <backend>
+    <forward-request timeout="{{backend-timeout-seconds}}" buffer-response="false" />
+  </backend>
+
+  <outbound>
+    <base />
+    <set-header name="Authorization" exists-action="delete" />
+    <set-header name="Ocp-Apim-Subscription-Key" exists-action="delete" />
+    <set-header name="api-key" exists-action="delete" />
+    <set-header name="x-api-key" exists-action="delete" />
+    <set-header name="Set-Cookie" exists-action="delete" />
+    <set-header name="Server" exists-action="delete" />
+    <set-header name="X-Powered-By" exists-action="delete" />
+    <set-header name="x-correlation-id" exists-action="override">
+      <value>@((string)context.Variables["correlationId"])</value>
+    </set-header>
+    <set-header name="x-governance-profile" exists-action="override">
+      <value>apim-governed</value>
+    </set-header>
+    <set-header name="x-governance-policy-version" exists-action="override">
+      <value>1.0.0</value>
+    </set-header>
+  </outbound>
+
+  <on-error>
+    <base />
+    <set-header name="Authorization" exists-action="delete" />
+    <set-header name="Ocp-Apim-Subscription-Key" exists-action="delete" />
+    <set-header name="api-key" exists-action="delete" />
+    <set-header name="x-api-key" exists-action="delete" />
+    <set-header name="Set-Cookie" exists-action="delete" />
+    <set-header name="Server" exists-action="delete" />
+    <set-header name="X-Powered-By" exists-action="delete" />
+    <set-header name="x-correlation-id" exists-action="override">
+      <value>@(
+        context.Variables.ContainsKey("correlationId")
+          ? (string)context.Variables["correlationId"]
+          : context.RequestId.ToString()
+      )</value>
+    </set-header>
+    <trace source="apim-governed" severity="error">
+      <message>@(
+        "request-failed"
+        + "; correlationId="
+        + (context.Variables.ContainsKey("correlationId")
+          ? (string)context.Variables["correlationId"]
+          : context.RequestId.ToString())
+        + "; source=" + context.LastError.Source
+        + "; reason=" + context.LastError.Reason
+      )</message>
+    </trace>
+  </on-error>
+</policies>

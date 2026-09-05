@@ -1,0 +1,1331 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.41.2.15936",
+      "templateHash": "4964946919827688961"
+    }
+  },
+  "parameters": {
+    "resourceGroupName": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource group created or reused for the deployment."
+      }
+    },
+    "profile": {
+      "type": "string",
+      "defaultValue": "direct",
+      "allowedValues": [
+        "direct",
+        "apim-governed"
+      ],
+      "metadata": {
+        "description": "Deployment profile. direct omits API Management; apim-governed deploys it as the managed ingress tier."
+      }
+    },
+    "workloadName": {
+      "type": "string",
+      "defaultValue": "claude-code",
+      "minLength": 2,
+      "maxLength": 20,
+      "metadata": {
+        "description": "Short workload identifier used in resource names."
+      }
+    },
+    "environmentName": {
+      "type": "string",
+      "defaultValue": "dev",
+      "minLength": 2,
+      "maxLength": 10,
+      "metadata": {
+        "description": "Environment identifier used in resource names and tags."
+      }
+    },
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure region for all regional resources."
+      }
+    },
+    "resourceSuffix": {
+      "type": "string",
+      "defaultValue": "[uniqueString(subscription().id, parameters('resourceGroupName'))]",
+      "minLength": 13,
+      "maxLength": 13,
+      "metadata": {
+        "description": "Stable lowercase alphanumeric suffix reserved in generated resource names."
+      }
+    },
+    "manageResourceGroup": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Create or update resource-group tags. Set false to preserve an unrelated existing resource group."
+      }
+    },
+    "foundryAccountName": {
+      "type": "string",
+      "defaultValue": "[toLower(take(format('aif-{0}-{1}-{2}', parameters('workloadName'), parameters('environmentName'), uniqueString(subscription().id, parameters('resourceGroupName'))), 64))]",
+      "minLength": 3,
+      "maxLength": 64,
+      "metadata": {
+        "description": "Globally unique Microsoft Foundry AIServices account name."
+      }
+    },
+    "foundryProjectName": {
+      "type": "string",
+      "defaultValue": "claude-code",
+      "minLength": 2,
+      "maxLength": 64,
+      "metadata": {
+        "description": "Foundry project name."
+      }
+    },
+    "reuseExistingFoundry": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Reuse an existing Foundry account and let the engine validate it instead of managing it with Bicep."
+      }
+    },
+    "entraOnlyAuthentication": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Disable API-key authentication on the Foundry account and require Microsoft Entra ID."
+      }
+    },
+    "foundryPublicNetworkAccess": {
+      "type": "string",
+      "defaultValue": "Enabled",
+      "allowedValues": [
+        "Enabled",
+        "Disabled"
+      ],
+      "metadata": {
+        "description": "Public network access for the Foundry account. Disabled requires separately managed private connectivity."
+      }
+    },
+    "keyVaultName": {
+      "type": "string",
+      "defaultValue": "[toLower(format('{0}{1}', take(format('kv{0}{1}', replace(parameters('workloadName'), '-', ''), replace(parameters('environmentName'), '-', '')), 11), parameters('resourceSuffix')))]",
+      "minLength": 3,
+      "maxLength": 24,
+      "metadata": {
+        "description": "Globally unique Key Vault name."
+      }
+    },
+    "keyVaultPublicNetworkAccess": {
+      "type": "string",
+      "defaultValue": "Enabled",
+      "allowedValues": [
+        "Enabled",
+        "Disabled"
+      ],
+      "metadata": {
+        "description": "Public network access for Key Vault. Disabled requires separately managed private connectivity."
+      }
+    },
+    "keyVaultNetworkDefaultAction": {
+      "type": "string",
+      "defaultValue": "Deny",
+      "allowedValues": [
+        "Allow",
+        "Deny"
+      ],
+      "metadata": {
+        "description": "Default Key Vault firewall action when public network access is enabled."
+      }
+    },
+    "logAnalyticsWorkspaceName": {
+      "type": "string",
+      "defaultValue": "[format('log-{0}-{1}', parameters('workloadName'), parameters('environmentName'))]",
+      "metadata": {
+        "description": "Log Analytics workspace name."
+      }
+    },
+    "logRetentionInDays": {
+      "type": "int",
+      "defaultValue": 30,
+      "minValue": 30,
+      "maxValue": 730,
+      "metadata": {
+        "description": "Log Analytics retention in days."
+      }
+    },
+    "applicationInsightsName": {
+      "type": "string",
+      "defaultValue": "[format('appi-{0}-{1}', parameters('workloadName'), parameters('environmentName'))]",
+      "metadata": {
+        "description": "Workspace-based Application Insights component name."
+      }
+    },
+    "enableDiagnosticSettings": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable diagnostic settings on resources that support the configured Log Analytics workspace."
+      }
+    },
+    "deploymentIdentityName": {
+      "type": "string",
+      "defaultValue": "[format('id-{0}-{1}-deploy', parameters('workloadName'), parameters('environmentName'))]",
+      "metadata": {
+        "description": "User-assigned identity used by deployment orchestration."
+      }
+    },
+    "runtimeIdentityName": {
+      "type": "string",
+      "defaultValue": "[format('id-{0}-{1}-runtime', parameters('workloadName'), parameters('environmentName'))]",
+      "metadata": {
+        "description": "User-assigned identity used by deployed runtime workloads."
+      }
+    },
+    "apiManagementName": {
+      "type": "string",
+      "defaultValue": "[toLower(take(format('apim-{0}-{1}-{2}', parameters('workloadName'), parameters('environmentName'), uniqueString(subscription().id, parameters('resourceGroupName'))), 50))]",
+      "minLength": 1,
+      "maxLength": 50,
+      "metadata": {
+        "description": "Globally unique API Management service name. Used only by the apim-governed profile."
+      }
+    },
+    "apiManagementPublisherName": {
+      "type": "string",
+      "defaultValue": "Platform Engineering",
+      "metadata": {
+        "description": "API Management publisher display name. Used only by the apim-governed profile."
+      }
+    },
+    "apiManagementPublisherEmail": {
+      "type": "string",
+      "defaultValue": "platform-team@example.com",
+      "metadata": {
+        "description": "API Management publisher email. Used only by the apim-governed profile."
+      }
+    },
+    "apiManagementSkuName": {
+      "type": "string",
+      "defaultValue": "Developer",
+      "allowedValues": [
+        "Developer",
+        "BasicV2",
+        "StandardV2",
+        "Premium"
+      ],
+      "metadata": {
+        "description": "API Management SKU. Developer is a safe non-production default; select a production SKU deliberately."
+      }
+    },
+    "apiManagementCapacity": {
+      "type": "int",
+      "defaultValue": 1,
+      "minValue": 1,
+      "metadata": {
+        "description": "API Management capacity."
+      }
+    },
+    "apiManagementPublicNetworkAccess": {
+      "type": "string",
+      "defaultValue": "Enabled",
+      "allowedValues": [
+        "Enabled",
+        "Disabled"
+      ],
+      "metadata": {
+        "description": "Public network access for API Management. Disabled requires separately managed private connectivity."
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {},
+      "metadata": {
+        "description": "Additional tags applied to all resources."
+      }
+    }
+  },
+  "variables": {
+    "deployApiManagement": "[equals(parameters('profile'), 'apim-governed')]",
+    "commonTags": "[union(createObject('workload', parameters('workloadName'), 'environment', parameters('environmentName'), 'deploymentProfile', parameters('profile'), 'managedBy', 'bicep'), parameters('tags'))]"
+  },
+  "resources": [
+    {
+      "condition": "[parameters('manageResourceGroup')]",
+      "type": "Microsoft.Resources/resourceGroups",
+      "apiVersion": "2024-03-01",
+      "name": "[parameters('resourceGroupName')]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('commonTags')]"
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "monitoring",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "logAnalyticsWorkspaceName": {
+            "value": "[parameters('logAnalyticsWorkspaceName')]"
+          },
+          "applicationInsightsName": {
+            "value": "[parameters('applicationInsightsName')]"
+          },
+          "logRetentionInDays": {
+            "value": "[parameters('logRetentionInDays')]"
+          },
+          "tags": {
+            "value": "[variables('commonTags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.41.2.15936",
+              "templateHash": "10350735330251694743"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region for monitoring resources."
+              }
+            },
+            "logAnalyticsWorkspaceName": {
+              "type": "string",
+              "metadata": {
+                "description": "Log Analytics workspace name."
+              }
+            },
+            "applicationInsightsName": {
+              "type": "string",
+              "metadata": {
+                "description": "Workspace-based Application Insights component name."
+              }
+            },
+            "logRetentionInDays": {
+              "type": "int",
+              "metadata": {
+                "description": "Log Analytics retention in days."
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Tags applied to monitoring resources."
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.OperationalInsights/workspaces",
+              "apiVersion": "2025-02-01",
+              "name": "[parameters('logAnalyticsWorkspaceName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "retentionInDays": "[parameters('logRetentionInDays')]",
+                "sku": {
+                  "name": "PerGB2018"
+                },
+                "features": {
+                  "enableLogAccessUsingOnlyResourcePermissions": true
+                }
+              }
+            },
+            {
+              "type": "Microsoft.Insights/components",
+              "apiVersion": "2020-02-02",
+              "name": "[parameters('applicationInsightsName')]",
+              "location": "[parameters('location')]",
+              "kind": "web",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "Application_Type": "web",
+                "DisableLocalAuth": true,
+                "IngestionMode": "LogAnalytics",
+                "WorkspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName'))]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "logAnalyticsWorkspaceId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName'))]"
+            },
+            "logAnalyticsWorkspaceName": {
+              "type": "string",
+              "value": "[parameters('logAnalyticsWorkspaceName')]"
+            },
+            "applicationInsightsId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Insights/components', parameters('applicationInsightsName'))]"
+            },
+            "applicationInsightsConnectionString": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Insights/components', parameters('applicationInsightsName')), '2020-02-02').ConnectionString]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "identities",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "deploymentIdentityName": {
+            "value": "[parameters('deploymentIdentityName')]"
+          },
+          "runtimeIdentityName": {
+            "value": "[parameters('runtimeIdentityName')]"
+          },
+          "tags": {
+            "value": "[variables('commonTags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.41.2.15936",
+              "templateHash": "16162693539455723910"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region for managed identities."
+              }
+            },
+            "deploymentIdentityName": {
+              "type": "string",
+              "metadata": {
+                "description": "Deployment orchestration identity name."
+              }
+            },
+            "runtimeIdentityName": {
+              "type": "string",
+              "metadata": {
+                "description": "Runtime workload identity name."
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Tags applied to managed identities."
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2024-11-30",
+              "name": "[parameters('deploymentIdentityName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]"
+            },
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2024-11-30",
+              "name": "[parameters('runtimeIdentityName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]"
+            }
+          ],
+          "outputs": {
+            "deploymentIdentityId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deploymentIdentityName'))]"
+            },
+            "deploymentClientId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deploymentIdentityName')), '2024-11-30').clientId]"
+            },
+            "deploymentPrincipalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('deploymentIdentityName')), '2024-11-30').principalId]"
+            },
+            "runtimeIdentityId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('runtimeIdentityName'))]"
+            },
+            "runtimeClientId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('runtimeIdentityName')), '2024-11-30').clientId]"
+            },
+            "runtimePrincipalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('runtimeIdentityName')), '2024-11-30').principalId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "key-vault",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "keyVaultName": {
+            "value": "[parameters('keyVaultName')]"
+          },
+          "tenantId": {
+            "value": "[subscription().tenantId]"
+          },
+          "publicNetworkAccess": {
+            "value": "[parameters('keyVaultPublicNetworkAccess')]"
+          },
+          "networkDefaultAction": {
+            "value": "[parameters('keyVaultNetworkDefaultAction')]"
+          },
+          "logAnalyticsWorkspaceId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'monitoring'), '2025-04-01').outputs.logAnalyticsWorkspaceId.value]"
+          },
+          "enableDiagnosticSettings": {
+            "value": "[parameters('enableDiagnosticSettings')]"
+          },
+          "tags": {
+            "value": "[variables('commonTags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.41.2.15936",
+              "templateHash": "16678039586241343380"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region for Key Vault."
+              }
+            },
+            "keyVaultName": {
+              "type": "string",
+              "metadata": {
+                "description": "Globally unique Key Vault name."
+              }
+            },
+            "tenantId": {
+              "type": "string",
+              "metadata": {
+                "description": "Microsoft Entra tenant ID that owns the vault."
+              }
+            },
+            "publicNetworkAccess": {
+              "type": "string",
+              "metadata": {
+                "description": "Public network access for Key Vault."
+              }
+            },
+            "networkDefaultAction": {
+              "type": "string",
+              "metadata": {
+                "description": "Default Key Vault firewall action."
+              }
+            },
+            "logAnalyticsWorkspaceId": {
+              "type": "string",
+              "metadata": {
+                "description": "Log Analytics workspace resource ID for diagnostics."
+              }
+            },
+            "enableDiagnosticSettings": {
+              "type": "bool",
+              "metadata": {
+                "description": "Enable the Key Vault diagnostic setting."
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Tags applied to Key Vault."
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.KeyVault/vaults",
+              "apiVersion": "2024-11-01",
+              "name": "[parameters('keyVaultName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "tenantId": "[parameters('tenantId')]",
+                "enableRbacAuthorization": true,
+                "enableSoftDelete": true,
+                "softDeleteRetentionInDays": 90,
+                "enablePurgeProtection": true,
+                "publicNetworkAccess": "[parameters('publicNetworkAccess')]",
+                "networkAcls": {
+                  "bypass": "AzureServices",
+                  "defaultAction": "[parameters('networkDefaultAction')]",
+                  "ipRules": [],
+                  "virtualNetworkRules": []
+                },
+                "sku": {
+                  "family": "A",
+                  "name": "standard"
+                }
+              }
+            },
+            {
+              "condition": "[parameters('enableDiagnosticSettings')]",
+              "type": "Microsoft.Insights/diagnosticSettings",
+              "apiVersion": "2021-05-01-preview",
+              "scope": "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+              "name": "send-to-log-analytics",
+              "properties": {
+                "workspaceId": "[parameters('logAnalyticsWorkspaceId')]",
+                "logs": [
+                  {
+                    "categoryGroup": "allLogs",
+                    "enabled": true
+                  }
+                ],
+                "metrics": [
+                  {
+                    "category": "AllMetrics",
+                    "enabled": true
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "keyVaultId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+            },
+            "keyVaultName": {
+              "type": "string",
+              "value": "[parameters('keyVaultName')]"
+            },
+            "keyVaultUri": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2024-11-01').vaultUri]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'monitoring')]"
+      ]
+    },
+    {
+      "condition": "[not(parameters('reuseExistingFoundry'))]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "foundry",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "accountName": {
+            "value": "[parameters('foundryAccountName')]"
+          },
+          "projectName": {
+            "value": "[parameters('foundryProjectName')]"
+          },
+          "disableLocalAuth": {
+            "value": "[parameters('entraOnlyAuthentication')]"
+          },
+          "publicNetworkAccess": {
+            "value": "[parameters('foundryPublicNetworkAccess')]"
+          },
+          "logAnalyticsWorkspaceId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'monitoring'), '2025-04-01').outputs.logAnalyticsWorkspaceId.value]"
+          },
+          "enableDiagnosticSettings": {
+            "value": "[parameters('enableDiagnosticSettings')]"
+          },
+          "tags": {
+            "value": "[variables('commonTags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.41.2.15936",
+              "templateHash": "12388820813765993523"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region for the Microsoft Foundry resources."
+              }
+            },
+            "accountName": {
+              "type": "string",
+              "metadata": {
+                "description": "Globally unique AIServices account name."
+              }
+            },
+            "projectName": {
+              "type": "string",
+              "metadata": {
+                "description": "Foundry project name."
+              }
+            },
+            "disableLocalAuth": {
+              "type": "bool",
+              "metadata": {
+                "description": "Disable local API-key authentication."
+              }
+            },
+            "publicNetworkAccess": {
+              "type": "string",
+              "metadata": {
+                "description": "Public network access for the Foundry account."
+              }
+            },
+            "logAnalyticsWorkspaceId": {
+              "type": "string",
+              "metadata": {
+                "description": "Log Analytics workspace resource ID for diagnostics."
+              }
+            },
+            "enableDiagnosticSettings": {
+              "type": "bool",
+              "metadata": {
+                "description": "Enable the Foundry diagnostic setting."
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Tags applied to Microsoft Foundry resources."
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.CognitiveServices/accounts",
+              "apiVersion": "2025-06-01",
+              "name": "[parameters('accountName')]",
+              "location": "[parameters('location')]",
+              "kind": "AIServices",
+              "tags": "[parameters('tags')]",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "sku": {
+                "name": "S0"
+              },
+              "properties": {
+                "allowProjectManagement": true,
+                "customSubDomainName": "[parameters('accountName')]",
+                "disableLocalAuth": "[parameters('disableLocalAuth')]",
+                "publicNetworkAccess": "[parameters('publicNetworkAccess')]",
+                "networkAcls": {
+                  "bypass": "AzureServices",
+                  "defaultAction": "[if(equals(parameters('publicNetworkAccess'), 'Enabled'), 'Allow', 'Deny')]",
+                  "ipRules": [],
+                  "virtualNetworkRules": []
+                }
+              }
+            },
+            {
+              "type": "Microsoft.CognitiveServices/accounts/projects",
+              "apiVersion": "2025-06-01",
+              "name": "[format('{0}/{1}', parameters('accountName'), parameters('projectName'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "displayName": "[parameters('projectName')]",
+                "description": "[format('Microsoft Foundry project for {0}.', parameters('accountName'))]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts', parameters('accountName'))]"
+              ]
+            },
+            {
+              "condition": "[parameters('enableDiagnosticSettings')]",
+              "type": "Microsoft.Insights/diagnosticSettings",
+              "apiVersion": "2021-05-01-preview",
+              "scope": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('accountName'))]",
+              "name": "send-to-log-analytics",
+              "properties": {
+                "workspaceId": "[parameters('logAnalyticsWorkspaceId')]",
+                "logs": [
+                  {
+                    "categoryGroup": "allLogs",
+                    "enabled": true
+                  }
+                ],
+                "metrics": [
+                  {
+                    "category": "AllMetrics",
+                    "enabled": true
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts', parameters('accountName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "accountId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('accountName'))]"
+            },
+            "accountName": {
+              "type": "string",
+              "value": "[parameters('accountName')]"
+            },
+            "accountEndpoint": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('accountName')), '2025-06-01').endpoint]"
+            },
+            "accountPrincipalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('accountName')), '2025-06-01', 'full').identity.principalId]"
+            },
+            "projectId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.CognitiveServices/accounts/projects', parameters('accountName'), parameters('projectName'))]"
+            },
+            "projectName": {
+              "type": "string",
+              "value": "[parameters('projectName')]"
+            },
+            "projectPrincipalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts/projects', parameters('accountName'), parameters('projectName')), '2025-06-01', 'full').identity.principalId]"
+            },
+            "projectEndpoint": {
+              "type": "string",
+              "value": "[format('https://{0}.services.ai.azure.com/api/projects/{1}', parameters('accountName'), parameters('projectName'))]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'monitoring')]"
+      ]
+    },
+    {
+      "condition": "[variables('deployApiManagement')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "api-management",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "serviceName": {
+            "value": "[parameters('apiManagementName')]"
+          },
+          "publisherName": {
+            "value": "[parameters('apiManagementPublisherName')]"
+          },
+          "publisherEmail": {
+            "value": "[parameters('apiManagementPublisherEmail')]"
+          },
+          "skuName": {
+            "value": "[parameters('apiManagementSkuName')]"
+          },
+          "capacity": {
+            "value": "[parameters('apiManagementCapacity')]"
+          },
+          "publicNetworkAccess": {
+            "value": "[parameters('apiManagementPublicNetworkAccess')]"
+          },
+          "logAnalyticsWorkspaceId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'monitoring'), '2025-04-01').outputs.logAnalyticsWorkspaceId.value]"
+          },
+          "enableDiagnosticSettings": {
+            "value": "[parameters('enableDiagnosticSettings')]"
+          },
+          "tags": {
+            "value": "[variables('commonTags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.41.2.15936",
+              "templateHash": "1745899509566931165"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region for API Management."
+              }
+            },
+            "serviceName": {
+              "type": "string",
+              "metadata": {
+                "description": "Globally unique API Management service name."
+              }
+            },
+            "publisherName": {
+              "type": "string",
+              "metadata": {
+                "description": "API Management publisher display name."
+              }
+            },
+            "publisherEmail": {
+              "type": "string",
+              "metadata": {
+                "description": "API Management publisher email."
+              }
+            },
+            "skuName": {
+              "type": "string",
+              "metadata": {
+                "description": "API Management SKU name."
+              }
+            },
+            "capacity": {
+              "type": "int",
+              "metadata": {
+                "description": "API Management capacity."
+              }
+            },
+            "publicNetworkAccess": {
+              "type": "string",
+              "metadata": {
+                "description": "Public network access for API Management."
+              }
+            },
+            "logAnalyticsWorkspaceId": {
+              "type": "string",
+              "metadata": {
+                "description": "Log Analytics workspace resource ID for diagnostics."
+              }
+            },
+            "enableDiagnosticSettings": {
+              "type": "bool",
+              "metadata": {
+                "description": "Enable the API Management diagnostic setting."
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Tags applied to API Management."
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ApiManagement/service",
+              "apiVersion": "2024-05-01",
+              "name": "[parameters('serviceName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "sku": {
+                "name": "[parameters('skuName')]",
+                "capacity": "[parameters('capacity')]"
+              },
+              "properties": {
+                "publisherEmail": "[parameters('publisherEmail')]",
+                "publisherName": "[parameters('publisherName')]",
+                "publicNetworkAccess": "[parameters('publicNetworkAccess')]",
+                "virtualNetworkType": "None",
+                "developerPortalStatus": "Disabled"
+              }
+            },
+            {
+              "condition": "[parameters('enableDiagnosticSettings')]",
+              "type": "Microsoft.Insights/diagnosticSettings",
+              "apiVersion": "2021-05-01-preview",
+              "scope": "[resourceId('Microsoft.ApiManagement/service', parameters('serviceName'))]",
+              "name": "send-to-log-analytics",
+              "properties": {
+                "workspaceId": "[parameters('logAnalyticsWorkspaceId')]",
+                "logs": [
+                  {
+                    "categoryGroup": "allLogs",
+                    "enabled": true
+                  }
+                ],
+                "metrics": [
+                  {
+                    "category": "AllMetrics",
+                    "enabled": true
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ApiManagement/service', parameters('serviceName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "serviceId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.ApiManagement/service', parameters('serviceName'))]"
+            },
+            "serviceName": {
+              "type": "string",
+              "value": "[parameters('serviceName')]"
+            },
+            "principalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ApiManagement/service', parameters('serviceName')), '2024-05-01', 'full').identity.principalId]"
+            },
+            "gatewayUrl": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ApiManagement/service', parameters('serviceName')), '2024-05-01').gatewayUrl]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'monitoring')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "rbac",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "foundryAccountName": {
+            "value": "[parameters('foundryAccountName')]"
+          },
+          "keyVaultName": {
+            "value": "[parameters('keyVaultName')]"
+          },
+          "deploymentIdentityPrincipalId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.deploymentPrincipalId.value]"
+          },
+          "runtimeIdentityPrincipalId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.runtimePrincipalId.value]"
+          },
+          "deployApiManagement": {
+            "value": "[variables('deployApiManagement')]"
+          },
+          "apiManagementName": {
+            "value": "[parameters('apiManagementName')]"
+          },
+          "apiManagementPrincipalId": "[if(variables('deployApiManagement'), createObject('value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'api-management'), '2025-04-01').outputs.principalId.value), createObject('value', ''))]"
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.41.2.15936",
+              "templateHash": "13454405793555987399"
+            }
+          },
+          "parameters": {
+            "foundryAccountName": {
+              "type": "string",
+              "metadata": {
+                "description": "Existing Microsoft Foundry AIServices account name."
+              }
+            },
+            "keyVaultName": {
+              "type": "string",
+              "metadata": {
+                "description": "Existing Key Vault name."
+              }
+            },
+            "deploymentIdentityPrincipalId": {
+              "type": "string",
+              "metadata": {
+                "description": "Deployment orchestration identity principal ID."
+              }
+            },
+            "runtimeIdentityPrincipalId": {
+              "type": "string",
+              "metadata": {
+                "description": "Runtime workload identity principal ID."
+              }
+            },
+            "deployApiManagement": {
+              "type": "bool",
+              "metadata": {
+                "description": "Whether API Management is deployed."
+              }
+            },
+            "apiManagementName": {
+              "type": "string",
+              "metadata": {
+                "description": "Existing API Management service name."
+              }
+            },
+            "apiManagementPrincipalId": {
+              "type": "string",
+              "metadata": {
+                "description": "API Management system-assigned identity principal ID."
+              }
+            }
+          },
+          "variables": {
+            "cognitiveServicesUserRoleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a97b65f3-24c7-4388-baec-2e87135dc908')]",
+            "cognitiveServicesContributorRoleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '25fbc0a9-bd7c-42a3-aa1a-3b75d497ee68')]",
+            "keyVaultSecretsUserRoleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')]",
+            "apiManagementServiceContributorRoleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '312a565d-c81f-4fd8-895a-4e21e48d571c')]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName'))]",
+              "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName')), parameters('deploymentIdentityPrincipalId'), variables('cognitiveServicesContributorRoleDefinitionId'))]",
+              "properties": {
+                "principalId": "[parameters('deploymentIdentityPrincipalId')]",
+                "principalType": "ServicePrincipal",
+                "roleDefinitionId": "[variables('cognitiveServicesContributorRoleDefinitionId')]"
+              }
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName'))]",
+              "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName')), parameters('runtimeIdentityPrincipalId'), variables('cognitiveServicesUserRoleDefinitionId'))]",
+              "properties": {
+                "principalId": "[parameters('runtimeIdentityPrincipalId')]",
+                "principalType": "ServicePrincipal",
+                "roleDefinitionId": "[variables('cognitiveServicesUserRoleDefinitionId')]"
+              }
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+              "name": "[guid(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), parameters('runtimeIdentityPrincipalId'), variables('keyVaultSecretsUserRoleDefinitionId'))]",
+              "properties": {
+                "principalId": "[parameters('runtimeIdentityPrincipalId')]",
+                "principalType": "ServicePrincipal",
+                "roleDefinitionId": "[variables('keyVaultSecretsUserRoleDefinitionId')]"
+              }
+            },
+            {
+              "condition": "[parameters('deployApiManagement')]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName'))]",
+              "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', parameters('foundryAccountName')), parameters('apiManagementPrincipalId'), variables('cognitiveServicesUserRoleDefinitionId'))]",
+              "properties": {
+                "principalId": "[parameters('apiManagementPrincipalId')]",
+                "principalType": "ServicePrincipal",
+                "roleDefinitionId": "[variables('cognitiveServicesUserRoleDefinitionId')]"
+              }
+            },
+            {
+              "condition": "[parameters('deployApiManagement')]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.ApiManagement/service', parameters('apiManagementName'))]",
+              "name": "[guid(resourceId('Microsoft.ApiManagement/service', parameters('apiManagementName')), parameters('deploymentIdentityPrincipalId'), variables('apiManagementServiceContributorRoleDefinitionId'))]",
+              "properties": {
+                "principalId": "[parameters('deploymentIdentityPrincipalId')]",
+                "principalType": "ServicePrincipal",
+                "roleDefinitionId": "[variables('apiManagementServiceContributorRoleDefinitionId')]"
+              }
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'api-management')]",
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'foundry')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identities')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'key-vault')]"
+      ]
+    }
+  ],
+  "outputs": {
+    "deploymentProfile": {
+      "type": "string",
+      "value": "[parameters('profile')]"
+    },
+    "resourceGroupId": {
+      "type": "string",
+      "value": "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]"
+    },
+    "resourceGroupName": {
+      "type": "string",
+      "value": "[parameters('resourceGroupName')]"
+    },
+    "foundryAccountId": {
+      "type": "string",
+      "value": "[resourceId(parameters('resourceGroupName'), 'Microsoft.CognitiveServices/accounts', parameters('foundryAccountName'))]"
+    },
+    "foundryAccountName": {
+      "type": "string",
+      "value": "[parameters('foundryAccountName')]"
+    },
+    "foundryEndpoint": {
+      "type": "string",
+      "value": "[format('https://{0}.services.ai.azure.com/', parameters('foundryAccountName'))]"
+    },
+    "foundryAnthropicEndpoint": {
+      "type": "string",
+      "value": "[format('https://{0}.services.ai.azure.com/anthropic', parameters('foundryAccountName'))]"
+    },
+    "foundryAccountPrincipalId": {
+      "type": "string",
+      "value": "[if(parameters('reuseExistingFoundry'), '', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'foundry'), '2025-04-01').outputs.accountPrincipalId.value)]"
+    },
+    "foundryProjectId": {
+      "type": "string",
+      "value": "[resourceId(parameters('resourceGroupName'), 'Microsoft.CognitiveServices/accounts/projects', parameters('foundryAccountName'), parameters('foundryProjectName'))]"
+    },
+    "foundryProjectName": {
+      "type": "string",
+      "value": "[parameters('foundryProjectName')]"
+    },
+    "foundryProjectEndpoint": {
+      "type": "string",
+      "value": "[format('https://{0}.services.ai.azure.com/api/projects/{1}', parameters('foundryAccountName'), parameters('foundryProjectName'))]"
+    },
+    "foundryProjectPrincipalId": {
+      "type": "string",
+      "value": "[if(parameters('reuseExistingFoundry'), '', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'foundry'), '2025-04-01').outputs.projectPrincipalId.value)]"
+    },
+    "deploymentIdentityId": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.deploymentIdentityId.value]"
+    },
+    "deploymentIdentityClientId": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.deploymentClientId.value]"
+    },
+    "deploymentIdentityPrincipalId": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.deploymentPrincipalId.value]"
+    },
+    "runtimeIdentityId": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.runtimeIdentityId.value]"
+    },
+    "runtimeIdentityClientId": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.runtimeClientId.value]"
+    },
+    "runtimeIdentityPrincipalId": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'identities'), '2025-04-01').outputs.runtimePrincipalId.value]"
+    },
+    "keyVaultId": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'key-vault'), '2025-04-01').outputs.keyVaultId.value]"
+    },
+    "keyVaultUri": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'key-vault'), '2025-04-01').outputs.keyVaultUri.value]"
+    },
+    "logAnalyticsWorkspaceId": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'monitoring'), '2025-04-01').outputs.logAnalyticsWorkspaceId.value]"
+    },
+    "applicationInsightsId": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'monitoring'), '2025-04-01').outputs.applicationInsightsId.value]"
+    },
+    "applicationInsightsConnectionString": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'monitoring'), '2025-04-01').outputs.applicationInsightsConnectionString.value]"
+    },
+    "apiManagementId": {
+      "type": "string",
+      "value": "[if(variables('deployApiManagement'), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'api-management'), '2025-04-01').outputs.serviceId.value, '')]"
+    },
+    "apiManagementGatewayUrl": {
+      "type": "string",
+      "value": "[if(variables('deployApiManagement'), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'api-management'), '2025-04-01').outputs.gatewayUrl.value, '')]"
+    },
+    "apiManagementPrincipalId": {
+      "type": "string",
+      "value": "[if(variables('deployApiManagement'), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'api-management'), '2025-04-01').outputs.principalId.value, '')]"
+    }
+  }
+}
