@@ -383,6 +383,36 @@ test("generated snapshot loads and malformed or missing snapshots use the curate
   assert(/catalogState\.fallbackUsed[\s\S]*curated fallback/i.test(appScript), "fallback warning is not prominent in application logic");
 });
 
+test("every curated fallback model carries overlay metadata", () => {
+  const overlay = context.window.EZDEPLOY_CATALOG_OVERLAY.models;
+  for (const model of context.window.EZDEPLOY_CATALOG_FALLBACK.models) {
+    const curated = overlay[model.key];
+    assert(curated && curated.friendlyName && Number.isFinite(curated.order), `${model.key} has no curated overlay entry`);
+  }
+});
+
+test("overlay order lists the newest generation first in every family", () => {
+  const generation = (name) => name.replace(/^claude-[a-z]+-/, "").split("-").map(Number);
+  const compare = (left, right) => {
+    for (let index = 0; index < Math.max(left.length, right.length); index++) {
+      const difference = (left[index] || 0) - (right[index] || 0);
+      if (difference) return difference;
+    }
+    return 0;
+  };
+  const families = {};
+  for (const [key, curated] of Object.entries(context.window.EZDEPLOY_CATALOG_OVERLAY.models)) {
+    const name = key.split("|")[1];
+    const family = name.match(/^claude-([a-z]+)-/)[1];
+    (families[family] ||= []).push({ name, order: curated.order });
+  }
+  for (const [family, entries] of Object.entries(families)) {
+    const first = entries.reduce((best, entry) => (entry.order < best.order ? entry : best));
+    const newest = entries.reduce((best, entry) => (compare(generation(entry.name), generation(best.name)) > 0 ? entry : best));
+    assertEqual(generation(first.name).join("."), generation(newest.name).join("."), `${family} overlay order does not start with the newest generation`);
+  }
+});
+
 test("Preview models stay hidden until explicit opt-in", () => {
   const stateWithPreview = {
     models: [
