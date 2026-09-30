@@ -10,10 +10,14 @@
     ["opus", "claude-opus-4-8", "2", true, "azure", "AIServices.GlobalStandard.claude-opus-4-8.Azure"],
     ["opus", "claude-opus-5", "1", false, "anthropic", "AIServices.GlobalStandard.claude-opus-5"],
     ["opus", "claude-opus-5", "2", true, "azure", "AIServices.GlobalStandard.claude-opus-5.Azure"],
+    ["opus", "claude-opus-5-5", "1", false, "anthropic", "AIServices.GlobalStandard.claude-opus-5-5"],
+    ["opus", "claude-opus-5-5", "2", true, "azure", "AIServices.GlobalStandard.claude-opus-5-5.Azure"],
     ["sonnet", "claude-sonnet-4-5", "20250929", true, null, "AIServices.GlobalStandard.claude-sonnet-4-5"],
     ["sonnet", "claude-sonnet-4-6", "1", true, null, "AIServices.GlobalStandard.claude-sonnet-4-6"],
     ["sonnet", "claude-sonnet-5", "1", false, "anthropic", "AIServices.GlobalStandard.claude-sonnet-5"],
     ["sonnet", "claude-sonnet-5", "2", true, "azure", "AIServices.GlobalStandard.claude-sonnet-5.Azure"],
+    ["sonnet", "claude-sonnet-5-5", "1", false, "anthropic", "AIServices.GlobalStandard.claude-sonnet-5-5"],
+    ["sonnet", "claude-sonnet-5-5", "2", true, "azure", "AIServices.GlobalStandard.claude-sonnet-5-5.Azure"],
   ];
   const models = rows.map(([family, name, version, isDefaultVersion, hostedOn, usageName]) => ({
     key: `anthropic|${name}|${version}`,
