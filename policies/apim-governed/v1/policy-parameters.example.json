@@ -1,0 +1,11 @@
+{
+  "entra-tenant-id": "<configure-entra-tenant-id>",
+  "entra-audience": "https://cognitiveservices.azure.com",
+  "allowed-principal-ids": "<configure-principal-object-id>",
+  "rate-limit-calls": "60",
+  "rate-limit-renewal-seconds": "60",
+  "approved-model-deployment-routes": "claude-sonnet=approved-sonnet-deployment;claude-haiku=approved-haiku-deployment",
+  "foundry-backend-id": "configured-foundry-backend",
+  "foundry-managed-identity-resource": "https://cognitiveservices.azure.com",
+  "backend-timeout-seconds": "120"
+}

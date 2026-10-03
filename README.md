@@ -1,19 +1,59 @@
 # Claude Code on Microsoft Foundry EZDeploy
 
-Deploy the Azure resources and exact Claude model versions needed to use Claude Code with Microsoft Foundry. The browser wizard generates an Azure Cloud Shell launcher; the Bash engine validates the live catalog and quota, creates or reuses resources, and produces a workstation configuration.
+Deploy the Azure resources and exact Claude model versions needed to use Claude Code with Microsoft Foundry. The manifest-driven CLI coordinates Bicep infrastructure, the existing live catalog and model engine, deployment reports, and an optional APIM governance layer. The anonymous browser wizard remains available for the original direct Cloud Shell workflow.
 
 > [!IMPORTANT]
 > This is an unofficial community sample. It is not an official Microsoft or Anthropic product and is not supported under either company's product support commitments. Microsoft, Azure, Microsoft Foundry, Anthropic, Claude, and Claude Code are trademarks of their respective owners.
 
-## Quick start
+## Manifest-driven quick start
 
-The full flow is five steps; each links to its detailed section below.
+Prerequisites:
 
-1. Open [`wizard/index.html`](wizard/index.html) in a browser and select the Azure target and exact model versions, capacities, and Claude Code defaults. No sign-in or network access is required. See [Anonymous regional model catalog](#anonymous-regional-model-catalog).
-2. Download the generated dry-run and deployment launchers. See [Generate the launchers](#generate-the-launchers).
-3. Upload both launchers and `scripts/ezdeploy-engine.sh` to one Azure Cloud Shell folder and run the dry run to validate the live catalog, quota, and existing resources without changes. See [Run the dry run first](#run-the-dry-run-first).
-4. Run the deployment launcher, review the live preflight output, and type `ACCEPT`. See [Confirm and deploy](#confirm-and-deploy).
-5. Download the generated workstation package and run its installer to configure Claude Code. See [Generated workstation package](#generated-workstation-package) and [Verify Claude Code](#verify-claude-code).
+- Node.js 22 or later.
+- Azure CLI 2.83.0 or later with Bicep installed.
+- Bash, `jq`, and `tar`; on Windows, install Git for Windows.
+- An authenticated Azure CLI session in the manifest tenant and subscription.
+- Permission to create the declared resource group, infrastructure, role assignments, Foundry resources, exact model deployments, and APIM resources when selected.
+- Authority to approve billable capacity, Marketplace terms, public network exposure, and the selected governance controls.
+- For `apim-governed`, the Microsoft Entra object IDs of every user or service principal allowed to invoke the gateway.
+
+Copy a sanitized example outside the repository, replace every customer-specific value, and keep the resulting manifest out of source control:
+
+```powershell
+node scripts/ezdeploy.js validate C:\secure\deployment-manifest.v1.json
+node scripts/ezdeploy.js render C:\secure\deployment-manifest.v1.json
+node scripts/ezdeploy.js plan C:\secure\deployment-manifest.v1.json
+node scripts/ezdeploy.js deploy C:\secure\deployment-manifest.v1.json
+```
+
+`render` is local and non-mutating. `plan` verifies the tenant and subscription, runs subscription-scope Bicep what-if, and then runs the existing engine with `--dry-run`. `deploy` repeats live engine preflight, requires the operator to type exact `ACCEPT` before any mutation, deploys Bicep, runs the exact-model engine under that approval, and completes APIM configuration when selected. Reports and generated workstation files default to `~/claude-code-foundry`; use `--output-dir` to choose another local directory.
+
+## Profile status
+
+| Profile | Status | Runtime path | Current limitation |
+|---|---|---|---|
+| `direct` | Deployable | Claude Code to Microsoft Foundry with Microsoft Entra authentication | Public Foundry endpoint only; private networking is future scope. |
+| `apim-governed` | Deployable | Claude Code to dedicated APIM to Microsoft Foundry using Entra caller validation, an explicit principal allowlist, and APIM system-assigned managed identity | Version 1 creates or safely reruns its manifest-owned public APIM service and public Foundry backend; adopting an unrelated APIM service and private connectivity are not supported. |
+| Private direct, hosted MCP, customer gateway | Proposed or future | See the architecture documentation | Not selectable by the version 1 validator or CLI. |
+
+Architecture and operations:
+
+- [Architecture index](docs/architecture/index.md)
+- [APIM-governed profile](docs/architecture/apim-governed-profile.md)
+- [Administration](docs/administration.md)
+- [Lifecycle, upgrade, drift, and cleanup](docs/lifecycle.md)
+
+## Existing wizard compatibility
+
+The original anonymous wizard and Cloud Shell launchers remain compatible and continue to deploy the `direct` profile through `scripts/ezdeploy-engine.sh`. They do not generate manifests, Bicep plans, monitoring resources, Key Vault, managed identities, or APIM configuration.
+
+The wizard flow remains:
+
+1. Open [`wizard/index.html`](wizard/index.html) and select the Azure target and exact model versions.
+2. Download the dry-run and deployment launchers.
+3. Upload the launchers and `scripts/ezdeploy-engine.sh` to Azure Cloud Shell.
+4. Run the dry run, then run deploy and type `ACCEPT`.
+5. Download and install the generated workstation package.
 
 ```mermaid
 flowchart LR
@@ -48,6 +88,12 @@ flowchart LR
 | `wizard/catalog/catalog.overlay.js` | Human-curated friendly names, ordering, default deployment names, and EZDeploy Recommended/Tested status. |
 | `wizard/catalog/catalog.fallback.js` | Curated emergency catalog used when the generated snapshot is missing or malformed. |
 | `scripts/ezdeploy-engine.sh` | Validate and deploy the selected configuration from Azure Cloud Shell. |
+| `scripts/ezdeploy.js` | Validate, render, plan, and deploy a versioned manifest through Bicep and the existing engine. |
+| `scripts/validate-manifest.js` | Zero-dependency schema and semantic manifest validator. |
+| `schemas/` and `examples/` | Versioned deployment manifest contract and sanitized direct/APIM examples. |
+| `infra/` | Subscription-scope Bicep modules for the resource group, Foundry, identities, RBAC, Key Vault, monitoring, diagnostics, and optional APIM. |
+| `policies/apim-governed/` | Versioned Entra validation, model routing, rate limiting, correlation, and managed-identity backend policy. |
+| `packages/` | Governance contracts for MCP servers, skills, and plugins; these declarations are not installed by the CLI. |
 | `scripts/generate-model-catalog.js` | Normalize and validate regional Azure catalog responses without third-party packages. |
 | `tests/run-regression.ps1` | Run the wizard and engine regression suites locally. |
 | `tests/catalog-generator-regression.js` | Test catalog normalization and last-known-good failure behavior. |
@@ -68,6 +114,8 @@ You need:
 6. Authority to approve the selected billable capacities, applicable Anthropic Azure Marketplace terms, and each model version's hosting and data boundary.
 7. Regional model availability and quota for every exact model, version, SKU, and capacity selected.
 8. Azure CLI 2.83.0 or later. Azure Cloud Shell also supplies Bash, `jq`, and `tar`.
+9. Node.js 22 or later for the manifest-driven CLI.
+10. User Access Administrator or equivalent role-assignment permission when the Bicep profile creates managed-identity assignments.
 
 New Foundry accounts are configured for Microsoft Entra ID authentication only. When an existing account is reused, the engine preserves its current local-authentication setting by default so existing key-authenticated workloads are not broken. The project does not create, retrieve, or store API keys.
 
@@ -75,7 +123,11 @@ Owner, Contributor, Cognitive Services Contributor, Foundry Account Owner, and A
 
 ## Security and network considerations
 
-The engine creates or reuses an `AIServices` account with a custom service endpoint. It does not configure private endpoints, network isolation, firewall rules, or an organization-specific data perimeter. Unless you separately restrict the Azure resource, its service endpoint is public and protected by Azure authentication and authorization. Review your organization's networking, Conditional Access, data residency, logging, and model-use requirements before deployment.
+The current deployable profiles use public service endpoints protected by Microsoft Entra authentication and Azure RBAC. The `apim-governed` profile additionally validates the caller token and tenant, requires the caller's `oid` or `sub` to appear in the manifest principal allowlist, enforces an approved model-to-deployment map and per-principal rate limit, removes inbound credentials before forwarding, and authenticates to Foundry with the APIM system-assigned managed identity. It does not configure private endpoints, network isolation, firewall rules, or an organization-specific data perimeter.
+
+The APIM policy stores only non-secret named values. The CLI writes ARM request bodies to permission-restricted temporary files and removes them after each request. No Foundry or APIM API key is created, retrieved, embedded, or reported.
+
+Reused Foundry accounts must expose a public endpoint with an allowing network ACL for version 1. Private-only or firewall-denied accounts are rejected before mutation. APIM renewal windows are limited to 300 seconds, backend header timeouts to 240 seconds, and response buffering is disabled so streamed responses pass through immediately.
 
 Generated configuration files contain identifiers such as subscription ID, tenant ID, resource names, project endpoints, deployment names, and model versions. They are not intended to contain secrets, but they may expose environment metadata. Store and share them accordingly. See [SECURITY.md](SECURITY.md) for additional limitations.
 
@@ -184,12 +236,14 @@ A successful deployment creates `~/claude-code-foundry` and `~/claude-code-found
 
 | File | Contents |
 |---|---|
-| `claude-foundry.env` | Bash environment activator with tenant, subscription, Foundry resource, and family defaults. |
-| `claude-foundry.ps1` | PowerShell environment activator with the same identifiers. |
+| `claude-foundry.env` | Bash environment activator with tenant, subscription, direct Foundry resource or APIM base URL, and family defaults. |
+| `claude-foundry.ps1` | PowerShell environment activator with the same identifiers and routing. |
 | `vscode-settings.snippet.json` | Claude Code extension environment settings. |
-| `deployment-report.json` | Deployment identifiers, endpoints, model versions, capacities, and provisioning states. |
+| `deployment-report.json` | Engine-observed identifiers, client base URL, model versions, capacities, and provisioning states. |
 | `install-claude-code-local.sh` | Bash/WSL installer and profile setup. |
 | `install-claude-code-windows.ps1` | Windows PowerShell installer and profile setup. |
+
+The manifest CLI writes an atomic `orchestration-<operation>-<timestamp>-<manifest-digest>-<nonce>.json` beside the generated package for each plan or deployment attempt. Render is stdout-only and does not persist a report. The engine creates the archive before orchestration finishes, so orchestration reports are not included in the `.tar.gz`.
 
 Download the archive from Cloud Shell using **Manage files** > **Download**.
 

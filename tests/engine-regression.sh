@@ -451,6 +451,11 @@ assert_contains "explicit full profile retains Opus" "$LAST_OUTPUT" "claude-opus
 run_engine new --help
 expect_success "engine help succeeds"
 assert_contains "help documents reused-account local-auth opt-in" "$LAST_OUTPUT" "--disable-local-auth-on-reuse"
+assert_contains "help documents gateway base URL" "$LAST_OUTPUT" "--foundry-base-url"
+assert_contains "help documents new-account collision guard" "$LAST_OUTPUT" "--require-new-account"
+
+run_engine new --foundry-base-url 'http://gateway.example.invalid/anthropic' --dry-run
+expect_failure "gateway base URL requires HTTPS" "--foundry-base-url must be an HTTPS URL"
 
 run_engine local-auth-unsupported --model claude-sonnet-5:2:sonnet-v2:5 --yes
 expect_failure "unsupported local-auth CLI is rejected before mutation" "does not support --disable-local-auth"
@@ -647,6 +652,8 @@ run_engine ambiguous-case \
 expect_failure "ambiguous existing case-only deployments are rejected" "Multiple existing deployments differ only by case for requested name collision"
 
 ARTIFACT_DIR="${TEST_ROOT}/generated-package"
+mkdir -p "$ARTIFACT_DIR"
+printf '{"old":"orchestration evidence"}\n' >"${ARTIFACT_DIR}/orchestration-plan-old.json"
 run_engine new \
   --model claude-sonnet-5:2:sonnet-primary:9 \
   --model claude-haiku-4-5:2:haiku-primary:6 \
@@ -661,6 +668,27 @@ assert_contains "new account passes local-auth disable flag" "$LAST_LOG" "--disa
 assert_before "new account compatibility is checked before mutation" "$LAST_LOG" "cognitiveservices account create --help" "group create"
 NEW_ACCOUNT_LOG="$LAST_LOG"
 NEW_ACCOUNT_STATE="$LAST_STATE"
+
+GATEWAY_ARTIFACT_DIR="${TEST_ROOT}/gateway-package"
+run_engine new \
+  --model claude-sonnet-5:2:sonnet-primary:9 \
+  --foundry-base-url 'https://gateway.example.invalid/anthropic' \
+  --output-dir "$GATEWAY_ARTIFACT_DIR" \
+  --yes
+expect_success "gateway deployment package succeeds"
+assert_contains "gateway Bash activator sets the base URL" \
+  "${GATEWAY_ARTIFACT_DIR}/claude-foundry.env" \
+  "ANTHROPIC_FOUNDRY_BASE_URL=https://gateway.example.invalid/anthropic"
+assert_contains "gateway Bash activator removes the direct resource" \
+  "${GATEWAY_ARTIFACT_DIR}/claude-foundry.env" \
+  "unset ANTHROPIC_FOUNDRY_RESOURCE"
+if jq -e '
+  .anthropicBaseUrl == "https://gateway.example.invalid/anthropic"
+' "${GATEWAY_ARTIFACT_DIR}/deployment-report.json" >/dev/null; then
+  pass "gateway deployment report records the approved base URL"
+else
+  fail "gateway deployment report records the approved base URL" "gateway URL mismatch"
+fi
 
 REUSED_ARTIFACT_DIR="${TEST_ROOT}/reused-package"
 run_engine reused \
@@ -764,6 +792,28 @@ else
   printf 'PowerShell is required for the engine regression suite.\n' >&2
   exit 2
 fi
+
+ESCAPED_GATEWAY_ARTIFACT_DIR="${TEST_ROOT}/escaped-gateway-package"
+run_engine new \
+  --model claude-sonnet-5:2:sonnet-primary:9 \
+  --foundry-base-url "https://gateway.example.invalid/';\$env:EZDEPLOY_INJECTED='yes';'" \
+  --output-dir "$ESCAPED_GATEWAY_ARTIFACT_DIR" \
+  --yes
+expect_success "gateway URL with PowerShell metacharacters is encoded"
+ESCAPED_PS_FILE="${ESCAPED_GATEWAY_ARTIFACT_DIR}/claude-foundry.ps1"
+if [[ "$POWERSHELL_COMMAND" == "pwsh.exe" ]]; then
+  ESCAPED_PS_FILE="$(cygpath -w "$ESCAPED_PS_FILE")"
+fi
+assert_contains "gateway PowerShell activator doubles single quotes" \
+  "${ESCAPED_GATEWAY_ARTIFACT_DIR}/claude-foundry.ps1" \
+  "gateway.example.invalid/'';"
+if "$POWERSHELL_COMMAND" -NoProfile -Command \
+    "Remove-Item Env:EZDEPLOY_INJECTED -ErrorAction SilentlyContinue; . '$ESCAPED_PS_FILE'; if (\$env:EZDEPLOY_INJECTED) { exit 1 }"; then
+  pass "gateway PowerShell activator preserves the URL without command injection"
+else
+  fail "gateway PowerShell activator preserves the URL without command injection" "PowerShell escaping failed"
+fi
+
 if "$POWERSHELL_COMMAND" -NoProfile -Command "[void][scriptblock]::Create((Get-Content -Raw -LiteralPath '$PS_FILE'))" >/dev/null 2>&1; then
   pass "generated PowerShell installer parses"
 else
@@ -777,6 +827,7 @@ assert_not_contains "PowerShell installer does not use Invoke-Expression" "${ART
 
 if jq -e '
   ."claudeCode.disableLoginPrompt" == true and
+  ([."claudeCode.environmentVariables"[] | select(.name == "ANTHROPIC_FOUNDRY_BASE_URL" and .value == "")] | length) == 1 and
   ([."claudeCode.environmentVariables"[] | select(.name == "ANTHROPIC_DEFAULT_SONNET_MODEL" and .value == "sonnet-primary")] | length) == 1 and
   ([."claudeCode.environmentVariables"[] | select(.name == "ANTHROPIC_DEFAULT_HAIKU_MODEL" and .value == "haiku-primary")] | length) == 1
 ' "${ARTIFACT_DIR}/vscode-settings.snippet.json" >/dev/null; then
@@ -802,7 +853,9 @@ else
 fi
 
 if grep -Fq 'export PATH="$HOME/.local/bin:$PATH"' "${ARTIFACT_DIR}/claude-foundry.env" &&
-   grep -Fq '$env:PATH = "$HOME\.local\bin;$env:PATH"' "${ARTIFACT_DIR}/claude-foundry.ps1"; then
+   grep -Fq 'unset ANTHROPIC_FOUNDRY_BASE_URL' "${ARTIFACT_DIR}/claude-foundry.env" &&
+   grep -Fq '$env:PATH = "$HOME\.local\bin;$env:PATH"' "${ARTIFACT_DIR}/claude-foundry.ps1" &&
+   grep -Fq 'Remove-Item Env:ANTHROPIC_FOUNDRY_BASE_URL -ErrorAction SilentlyContinue' "${ARTIFACT_DIR}/claude-foundry.ps1"; then
   pass "generated activators use expandable HOME paths"
 else
   fail "generated activators use expandable HOME paths" "HOME path is not expandable"
@@ -830,6 +883,11 @@ if [[ -f "${ARTIFACT_DIR}.tar.gz" ]] && tar -tzf "${ARTIFACT_DIR}.tar.gz" >/dev/
   pass "generated archive is readable"
 else
   fail "generated archive is readable" "archive is missing or invalid"
+fi
+if tar -tzf "${ARTIFACT_DIR}.tar.gz" | grep -Eq 'orchestration-|unexpected'; then
+  fail "generated archive contains only workstation allowlist" "unexpected output was archived"
+else
+  pass "generated archive contains only workstation allowlist"
 fi
 
 printf 'Engine tests: %d passed, %d failed.\n' "$PASSED" "$FAILED"

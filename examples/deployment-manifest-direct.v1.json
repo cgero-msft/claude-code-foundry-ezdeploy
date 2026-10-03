@@ -1,0 +1,140 @@
+{
+  "schemaVersion": "1.0",
+  "release": {
+    "version": "1.0.0",
+    "artifact": "claude-code-foundry-ezdeploy"
+  },
+  "customer": {
+    "id": "contoso-demo",
+    "displayName": "Contoso Demo",
+    "legalOrganization": "Contoso Demo LLC",
+    "countryCode": "US",
+    "industry": "technology"
+  },
+  "environment": {
+    "name": "contoso-dev",
+    "classification": "development",
+    "description": "Sanitized direct-connect example"
+  },
+  "architecture": {
+    "profile": "direct",
+    "status": "deployable",
+    "deployable": true
+  },
+  "azure": {
+    "tenantId": "11111111-1111-4111-8111-111111111111",
+    "subscriptionId": "22222222-2222-4222-8222-222222222222",
+    "resourceGroup": "rg-contoso-claude-dev",
+    "location": "eastus2",
+    "foundry": {
+      "accountName": "contoso-claude-dev",
+      "projectName": "claude-code",
+      "reuseExisting": false
+    }
+  },
+  "models": [
+    {
+      "family": "sonnet",
+      "publisher": "Anthropic",
+      "format": "Anthropic",
+      "name": "claude-sonnet-5",
+      "version": "2",
+      "sku": {
+        "name": "GlobalStandard",
+        "capacity": 10
+      },
+      "deployment": {
+        "name": "claude-sonnet-5",
+        "versionUpgradeOption": "NoAutoUpgrade"
+      }
+    },
+    {
+      "family": "haiku",
+      "publisher": "Anthropic",
+      "format": "Anthropic",
+      "name": "claude-haiku-4-5",
+      "version": "2",
+      "sku": {
+        "name": "GlobalStandard",
+        "capacity": 10
+      },
+      "deployment": {
+        "name": "claude-haiku-4-5",
+        "versionUpgradeOption": "NoAutoUpgrade"
+      }
+    }
+  ],
+  "familyDefaults": {
+    "sonnet": "claude-sonnet-5",
+    "haiku": "claude-haiku-4-5"
+  },
+  "identities": [
+    {
+      "name": "foundry-account",
+      "type": "system-assigned",
+      "purpose": "Foundry account identity"
+    }
+  ],
+  "personas": [
+    {
+      "name": "claude-code-developer",
+      "description": "Developer using Claude Code through Microsoft Entra authentication",
+      "identity": "foundry-account",
+      "roles": [
+        "Cognitive Services User"
+      ]
+    }
+  ],
+  "networking": {
+    "mode": "public",
+    "publicNetworkAccess": "Enabled",
+    "allowedCidrs": []
+  },
+  "governance": {
+    "dataClassification": "internal",
+    "allowedRegions": [
+      "eastus2"
+    ],
+    "localAuthentication": "disabled",
+    "marketplaceTermsAccepted": true,
+    "billableResourcesApproved": true,
+    "policyMode": "audit"
+  },
+  "observability": {
+    "diagnosticSettings": false,
+    "logRetentionDays": 30,
+    "costAlerts": false
+  },
+  "secretReferences": [],
+  "packages": {
+    "mcpServers": [
+      {
+        "name": "example-mcp",
+        "package": "@contoso/example-mcp",
+        "version": "1.2.3",
+        "source": "npm",
+        "configurationSecretReferences": []
+      }
+    ],
+    "skills": [],
+    "plugins": []
+  },
+  "ownership": {
+    "owningTeam": "Contoso AI Platform",
+    "technicalContact": "ai-platform@example.invalid",
+    "businessOwner": "business-owner@example.invalid",
+    "costCenter": "DEMO-001"
+  },
+  "lifecycle": {
+    "stage": "planned",
+    "createdByRelease": "1.0.0",
+    "upgradePolicy": "manual",
+    "reviewAfter": "2026-12-31"
+  },
+  "cleanup": {
+    "strategy": "delete-deployments",
+    "requiresApproval": true,
+    "owner": "ai-platform@example.invalid",
+    "retainLogsDays": 30
+  }
+}

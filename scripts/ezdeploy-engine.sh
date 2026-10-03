@@ -15,6 +15,7 @@ RESOURCE_GROUP=""
 LOCATION=""
 ACCOUNT_NAME=""
 PROJECT_NAME="claude-code"
+FOUNDRY_BASE_URL=""
 ORGANIZATION_NAME=""
 COUNTRY_CODE=""
 INDUSTRY=""
@@ -33,6 +34,7 @@ DRY_RUN=false
 YES=false
 ASSIGN_CURRENT_USER=false
 DISABLE_LOCAL_AUTH_ON_REUSE=false
+REQUIRE_NEW_ACCOUNT=false
 ACCOUNT_EXISTS=false
 ACCOUNT_JSON=""
 LOCAL_AUTH_COMMAND=""
@@ -96,11 +98,14 @@ Compatibility options:
 Other options:
   --tenant TENANT_ID           Require the selected subscription to use this tenant.
   --project-name NAME          Default: claude-code
+  --foundry-base-url URL       Optional full Claude Code Foundry base URL.
+                               Use for an approved gateway such as APIM.
   --sku NAME                   Default: GlobalStandard
   --assign-current-user        Add Cognitive Services User only if no effective runtime role exists.
   --disable-local-auth-on-reuse
                                Explicitly disable local authentication on an existing account.
                                Existing accounts preserve their current setting by default.
+  --require-new-account        Fail preflight if the Foundry account already exists.
   --output-dir PATH            Default: ~/claude-code-foundry
   --dry-run                    Validate configuration, live catalog, and quota without changes.
   --yes                        Confirm billable resources, Anthropic terms, and hosting boundaries.
@@ -116,6 +121,12 @@ info() { log INFO "$1"; }
 ok() { log OK "$1"; }
 warn() { log WARN "$1" >&2; }
 die() { log ERROR "$1" >&2; exit 1; }
+
+powershell_single_quote() {
+  local value="$1"
+  value="${value//\'/\'\'}"
+  printf '%s' "$value"
+}
 
 require_value() {
   [[ $# -ge 2 && -n "$2" && "$2" != --* ]] || die "$1 requires a value."
@@ -160,6 +171,7 @@ parse_args() {
       --location) require_value "$@"; LOCATION="${2,,}"; shift 2 ;;
       --account-name) require_value "$@"; ACCOUNT_NAME="$2"; shift 2 ;;
       --project-name) require_value "$@"; PROJECT_NAME="$2"; shift 2 ;;
+      --foundry-base-url) require_value "$@"; FOUNDRY_BASE_URL="$2"; shift 2 ;;
       --organization-name) require_value "$@"; ORGANIZATION_NAME="$2"; shift 2 ;;
       --country-code) require_value "$@"; COUNTRY_CODE="${2^^}"; shift 2 ;;
       --industry) require_value "$@"; INDUSTRY="${2,,}"; shift 2 ;;
@@ -175,6 +187,7 @@ parse_args() {
       --opus-capacity) require_value "$@"; OPUS_CAPACITY="$2"; FAMILY_CAPACITY_EXPLICIT=true; shift 2 ;;
       --assign-current-user) ASSIGN_CURRENT_USER=true; shift ;;
       --disable-local-auth-on-reuse) DISABLE_LOCAL_AUTH_ON_REUSE=true; shift ;;
+      --require-new-account) REQUIRE_NEW_ACCOUNT=true; shift ;;
       --output-dir) require_value "$@"; OUTPUT_DIR="$2"; shift 2 ;;
       --dry-run) DRY_RUN=true; shift ;;
       --yes) YES=true; shift ;;
@@ -201,6 +214,11 @@ parse_args() {
     die "--account-name must use 3-64 lowercase letters, numbers, or hyphens."
   [[ "$PROJECT_NAME" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{1,62}[A-Za-z0-9]$ ]] ||
     die "--project-name must use 3-64 letters, numbers, periods, underscores, or hyphens."
+  if [[ -n "$FOUNDRY_BASE_URL" ]]; then
+    [[ "$FOUNDRY_BASE_URL" =~ ^https://[^/?#[:space:]@]+(/[^?#[:space:]]*)?$ ]] ||
+      die "--foundry-base-url must be an HTTPS URL without credentials, query parameters, or fragments."
+    FOUNDRY_BASE_URL="${FOUNDRY_BASE_URL%/}"
+  fi
   [[ -n "$SKU" && "$SKU" =~ ^[A-Za-z0-9._-]+$ ]] || die "--sku contains unsupported characters."
   positive_integer "--sonnet-capacity" "$SONNET_CAPACITY"
   positive_integer "--haiku-capacity" "$HAIKU_CAPACITY"
@@ -813,6 +831,7 @@ EOF
     "Region:" "$LOCATION" \
     "Foundry account:" "$ACCOUNT_NAME" \
     "Foundry project:" "$PROJECT_NAME" \
+    "Client base URL:" "${FOUNDRY_BASE_URL:-https://${ACCOUNT_NAME}.services.ai.azure.com/anthropic}" \
     "Deployment SKU:" "$SKU" \
     "Assign current user:" "$ASSIGN_CURRENT_USER" \
     "Local authentication:" "$local_auth_action" \
@@ -1111,6 +1130,14 @@ build_environment_json() {
       {name:"AZURE_SUBSCRIPTION_ID",value:$subscription},
       {name:"AZURE_TENANT_ID",value:$tenant}
     ]')"
+  if [[ -n "$FOUNDRY_BASE_URL" ]]; then
+    environment="$(jq -c --arg value "$FOUNDRY_BASE_URL" \
+      'map(select(.name != "ANTHROPIC_FOUNDRY_RESOURCE")) + [{name:"ANTHROPIC_FOUNDRY_BASE_URL",value:$value}]' \
+      <<<"$environment")"
+  else
+    environment="$(jq -c \
+      '. + [{name:"ANTHROPIC_FOUNDRY_BASE_URL",value:""}]' <<<"$environment")"
+  fi
   [[ -z "$DEFAULT_SONNET_MODEL" ]] || environment="$(jq -c \
     --arg value "$DEFAULT_SONNET_MODEL" '. + [{name:"ANTHROPIC_DEFAULT_SONNET_MODEL",value:$value}]' <<<"$environment")"
   [[ -z "$DEFAULT_HAIKU_MODEL" ]] || environment="$(jq -c \
@@ -1169,7 +1196,7 @@ build_deployment_report() {
     --arg accountName "$ACCOUNT_NAME" \
     --arg projectName "$PROJECT_NAME" \
     --arg projectEndpoint "https://${ACCOUNT_NAME}.services.ai.azure.com/api/projects/${PROJECT_NAME}" \
-    --arg anthropicBaseUrl "https://${ACCOUNT_NAME}.services.ai.azure.com/anthropic" \
+    --arg anthropicBaseUrl "${FOUNDRY_BASE_URL:-https://${ACCOUNT_NAME}.services.ai.azure.com/anthropic}" \
     --argjson models "$models" \
     '{
       deploymentOutputWarning:"WARNING: Subscription and tenant identifiers are local deployment outputs and must not be committed.",
@@ -1190,7 +1217,7 @@ build_deployment_report() {
 }
 
 generate_artifacts() {
-  local environment_json archive
+  local environment_json archive foundry_base_url_ps
   environment_json="$(build_environment_json)"
   mkdir -p "$OUTPUT_DIR"
 
@@ -1201,10 +1228,17 @@ generate_artifacts() {
     printf 'export AZURE_SUBSCRIPTION_ID=%q\n' "$SUBSCRIPTION"
     printf 'export AZURE_TENANT_ID=%q\n' "$TENANT_ID"
     printf 'export PATH="$HOME/.local/bin:$PATH"\n'
+    [[ -n "$FOUNDRY_BASE_URL" ]] || printf 'unset ANTHROPIC_FOUNDRY_BASE_URL\n'
     [[ -z "$DEFAULT_SONNET_MODEL" ]] || printf 'export ANTHROPIC_DEFAULT_SONNET_MODEL=%q\n' "$DEFAULT_SONNET_MODEL"
     [[ -z "$DEFAULT_HAIKU_MODEL" ]] || printf 'export ANTHROPIC_DEFAULT_HAIKU_MODEL=%q\n' "$DEFAULT_HAIKU_MODEL"
     [[ -z "$DEFAULT_OPUS_MODEL" ]] || printf 'export ANTHROPIC_DEFAULT_OPUS_MODEL=%q\n' "$DEFAULT_OPUS_MODEL"
   } >"${OUTPUT_DIR}/claude-foundry.env"
+  if [[ -n "$FOUNDRY_BASE_URL" ]]; then
+    {
+      printf 'unset ANTHROPIC_FOUNDRY_RESOURCE\n'
+      printf 'export ANTHROPIC_FOUNDRY_BASE_URL=%q\n' "$FOUNDRY_BASE_URL"
+    } >>"${OUTPUT_DIR}/claude-foundry.env"
+  fi
 
   {
     printf "# WARNING: Subscription and tenant identifiers are local deployment outputs and must not be committed.\n"
@@ -1213,10 +1247,18 @@ generate_artifacts() {
     printf "\$env:AZURE_SUBSCRIPTION_ID = '%s'\n" "$SUBSCRIPTION"
     printf "\$env:AZURE_TENANT_ID = '%s'\n" "$TENANT_ID"
     printf '$env:PATH = "$HOME\\.local\\bin;$env:PATH"\n'
+    [[ -n "$FOUNDRY_BASE_URL" ]] || printf "Remove-Item Env:ANTHROPIC_FOUNDRY_BASE_URL -ErrorAction SilentlyContinue\n"
     [[ -z "$DEFAULT_SONNET_MODEL" ]] || printf "\$env:ANTHROPIC_DEFAULT_SONNET_MODEL = '%s'\n" "$DEFAULT_SONNET_MODEL"
     [[ -z "$DEFAULT_HAIKU_MODEL" ]] || printf "\$env:ANTHROPIC_DEFAULT_HAIKU_MODEL = '%s'\n" "$DEFAULT_HAIKU_MODEL"
     [[ -z "$DEFAULT_OPUS_MODEL" ]] || printf "\$env:ANTHROPIC_DEFAULT_OPUS_MODEL = '%s'\n" "$DEFAULT_OPUS_MODEL"
   } >"${OUTPUT_DIR}/claude-foundry.ps1"
+  if [[ -n "$FOUNDRY_BASE_URL" ]]; then
+    foundry_base_url_ps="$(powershell_single_quote "$FOUNDRY_BASE_URL")"
+    {
+      printf "Remove-Item Env:ANTHROPIC_FOUNDRY_RESOURCE -ErrorAction SilentlyContinue\n"
+      printf "\$env:ANTHROPIC_FOUNDRY_BASE_URL = '%s'\n" "$foundry_base_url_ps"
+    } >>"${OUTPUT_DIR}/claude-foundry.ps1"
+  fi
 
   jq -n --argjson environment "$environment_json" '{
     "deploymentOutputWarning":"WARNING: Subscription and tenant identifiers are local deployment outputs and must not be committed.",
@@ -1329,7 +1371,16 @@ Write-Host "Run 'claude' in a trusted repository, then use /status."
 EOF
 
   archive="${OUTPUT_DIR%/}.tar.gz"
-  tar -czf "$archive" -C "$(dirname "$OUTPUT_DIR")" "$(basename "$OUTPUT_DIR")"
+  local output_parent output_name
+  output_parent="$(dirname "$OUTPUT_DIR")"
+  output_name="$(basename "$OUTPUT_DIR")"
+  tar -czf "$archive" -C "$output_parent" \
+    "${output_name}/claude-foundry.env" \
+    "${output_name}/claude-foundry.ps1" \
+    "${output_name}/vscode-settings.snippet.json" \
+    "${output_name}/deployment-report.json" \
+    "${output_name}/install-claude-code-local.sh" \
+    "${output_name}/install-claude-code-windows.ps1"
   ok "Generated workstation package: ${archive}"
 }
 
@@ -1342,6 +1393,8 @@ main() {
   [[ "$provider_state" == Registered ]] ||
     warn "Microsoft.CognitiveServices is ${provider_state:-not registered}; deployment will register it after confirmation."
   discover_account
+  [[ "$REQUIRE_NEW_ACCOUNT" == false || "$ACCOUNT_EXISTS" == false ]] ||
+    die "Foundry account ${ACCOUNT_NAME} already exists, but the deployment requires a new account."
   verify_local_auth_compatibility
   load_live_catalog
   load_existing_deployments

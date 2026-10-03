@@ -31,10 +31,14 @@ On Linux, run:
 ```bash
 node tests/catalog-generator-regression.js scripts/generate-model-catalog.js
 node tests/wizard-regression.js wizard/index.html
+node tests/manifest-regression.js scripts/validate-manifest.js
+node tests/governance-regression.js
+node tests/cli-regression.js scripts/ezdeploy.js
 bash tests/engine-regression.sh scripts/ezdeploy-engine.sh
+pwsh -File tests/bicep-regression.ps1
 ```
 
-The engine regression suite uses a fake Azure CLI and must not make live Azure changes.
+The engine and manifest-driven CLI regression suites use fake Azure CLI executables and must not make live Azure changes. Bicep regression compiles the templates and both checked-in parameter files when Azure CLI is available.
 
 ## Model catalog changes
 

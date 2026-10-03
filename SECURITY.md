@@ -34,7 +34,11 @@ The optional `--disable-local-auth-on-reuse` flag hardens an existing account by
 
 Owner, Contributor, Cognitive Services Contributor, Foundry Account Owner, and Azure AI Account Owner are management-plane roles and do not provide Entra inference access. The engine recognizes these runtime roles: Cognitive Services User, Cognitive Services OpenAI User, Cognitive Services OpenAI Contributor, Foundry User, Foundry Owner, Foundry Project Manager, Azure AI Project Manager, Azure AI User, Azure AI Owner, and Azure AI Developer.
 
-The sample does not configure private networking. A created or reused Foundry account can have a public service endpoint unless the operator applies additional Azure network controls.
+The sample does not configure private networking. Both deployable profiles use a public Foundry service endpoint. The APIM-governed profile also uses a public APIM endpoint with Entra JWT validation, tenant enforcement, an explicit user/service-principal object-ID allowlist, manifest-derived model routing, per-principal rate limiting, and APIM system-assigned managed identity authentication to Foundry.
+
+The manifest CLI rejects APIM reuse, private-endpoint declarations, CIDR firewall declarations, and cost-alert requests in version 1 rather than silently omitting those controls. It writes Bicep parameters and APIM ARM bodies to permission-restricted temporary files, removes them after use, and redacts secret-shaped report fields.
+
+When a manifest reuses a Foundry account, preflight rejects public-network-disabled or deny-by-default network ACL configurations because version 1 has no private endpoint path. The same preflight checks ownership of every deterministic Bicep child resource and preserves unrelated resource-group tags.
 
 The generated workstation installers can download and execute Anthropic's published Claude Code installer. Review the generated scripts and applicable organizational policy before running them.
 
