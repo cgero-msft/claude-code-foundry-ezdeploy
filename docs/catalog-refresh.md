@@ -52,4 +52,8 @@ A minimal custom role definition uses the reference subscription as its only ass
 
 The reference identity should not receive Contributor, Owner, deployment, quota-write, or resource-write permissions. The current workflow uses repository Actions secrets and a branch-scoped federated credential; it does not declare a GitHub environment.
 
+## When the workflow cannot sign in
+
+If the workflow cannot authenticate to Azure, for example because a tenant Conditional Access policy blocks the federated identity, the scheduled refresh fails and the failure issue stays open. The checked-in snapshot keeps its last-known-good contents. Until sign-in works again, a maintainer can run `bash scripts/refresh-model-catalog.sh` in Azure Cloud Shell and open a pull request with the result, and any user can run the same script to refresh their own clone; see [Refresh the catalog yourself](../README.md#refresh-the-catalog-yourself).
+
 Reproducing a refresh locally and the rules for each catalog layer are covered in [CONTRIBUTING.md](../CONTRIBUTING.md).

@@ -18,7 +18,7 @@ function formatList(values) {
   return values.length ? values.map((value) => `- ${value}`).join("\n") : "- None";
 }
 
-function summarize(previous, current) {
+function catalogChanges(previous, current) {
   const oldModels = byKey(previous);
   const newModels = byKey(current);
   const added = [...newModels.keys()].filter((key) => !oldModels.has(key)).sort();
@@ -34,7 +34,11 @@ function summarize(previous, current) {
       if (before !== after) lifecycle.push(`${key} / ${region}: ${before} -> ${after}`);
     }
   }
+  return { added, removed, lifecycle };
+}
 
+function summarize(previous, current) {
+  const { added, removed, lifecycle } = catalogChanges(previous, current);
   return `## Automated model catalog refresh
 
 - Generated: ${current.generatedAt}
@@ -56,10 +60,28 @@ The snapshot reflects a narrowly scoped reference subscription. User-specific av
 `;
 }
 
+function plainSummary(previous, current) {
+  const { added, removed, lifecycle } = catalogChanges(previous, current);
+  return `Catalog generated ${current.generatedAt} for ${current.regions.join(", ")}: ${current.models.length} Claude model versions.
+
+Added:
+${formatList(added)}
+
+Removed:
+${formatList(removed)}
+
+Lifecycle changes:
+${formatList(lifecycle)}
+`;
+}
+
 if (require.main === module) {
-  const [previousPath, currentPath] = process.argv.slice(2);
+  const args = process.argv.slice(2);
+  const plain = args[0] === "--plain";
+  if (plain) args.shift();
+  const [previousPath, currentPath] = args;
   if (!previousPath || !currentPath) {
-    process.stderr.write("Usage: node summarize-model-catalog.js PREVIOUS CURRENT\n");
+    process.stderr.write("Usage: node summarize-model-catalog.js [--plain] PREVIOUS CURRENT\n");
     process.exitCode = 2;
   } else {
     let previous = { models: [] };
@@ -68,8 +90,9 @@ if (require.main === module) {
     } catch {
       // A valid refresh must still be able to repair a missing or malformed prior snapshot.
     }
-    process.stdout.write(summarize(previous, readSnapshot(currentPath)));
+    const current = readSnapshot(currentPath);
+    process.stdout.write(plain ? plainSummary(previous, current) : summarize(previous, current));
   }
 }
 
-module.exports = { readSnapshot, summarize };
+module.exports = { catalogChanges, plainSummary, readSnapshot, summarize };

@@ -44,7 +44,13 @@ The wizard catalog has three layers:
 - `wizard/catalog/catalog.overlay.js` is the reviewed source for friendly names, ordering, default deployment names, and EZDeploy Recommended/Tested status.
 - `wizard/catalog/catalog.fallback.js` is the curated emergency fallback used only when the generated snapshot is missing or malformed.
 
-To reproduce a refresh locally, authenticate Azure CLI to an appropriate reference subscription, capture exactly the two supported regions, and run the zero-install generator:
+To reproduce a refresh locally, sign in Azure CLI to an appropriate reference subscription and run:
+
+```bash
+bash scripts/refresh-model-catalog.sh
+```
+
+The script captures exactly the two supported regions, runs the zero-install generator, and prints the models added, removed, or changed. Commit the regenerated `wizard/catalog/catalog.generated.js` in its own pull request, and include that summary and the regression results in the description. Running the generator directly is equivalent:
 
 ```bash
 mkdir -p .tmp/catalog-refresh

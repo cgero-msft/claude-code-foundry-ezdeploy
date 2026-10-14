@@ -145,6 +145,10 @@ catalog_with_lifecycle() {
 if [[ "${1:-}" == version ]]; then
   printf '2.83.0\n'
 elif [[ "${1:-}" == account && "${2:-}" == show ]]; then
+  if [[ "$scenario" == refresh-signed-out ]]; then
+    printf "ERROR: Please run 'az login' to setup account.\n" >&2
+    exit 1
+  fi
   case "$query" in
     id) printf '00000000-0000-4000-8000-000000000001\n' ;;
     tenantId) printf '00000000-0000-4000-8000-000000000002\n' ;;
@@ -160,6 +164,13 @@ elif [[ "${1:-}" == provider && "${2:-}" == register ]]; then
 elif [[ "${1:-}" == cognitiveservices && "${2:-}" == model && "${3:-}" == list ]]; then
   location="$(arg_after --location "$@")"
   case "$scenario" in
+    refresh-region-failure)
+      if [[ "$location" == swedencentral ]]; then
+        printf 'ERROR: (AuthorizationFailed) The client does not have authorization to perform action.\n' >&2
+        exit 1
+      fi
+      catalog_with_lifecycle
+      ;;
     regional-mismatch)
       if [[ "$location" == eastus2 ]]; then
         catalog_with_lifecycle |
@@ -753,6 +764,76 @@ assert_contains "Bash installer reports the official HTTPS download" "${ARTIFACT
 assert_contains "Bash installer executes the saved installer" "${ARTIFACT_DIR}/install-claude-code-local.sh" 'bash "$installer"'
 assert_contains "Bash installer cleans up its temporary file" "${ARTIFACT_DIR}/install-claude-code-local.sh" 'rm -f -- "$installer"'
 assert_not_contains "Bash installer does not pipe remote code to shell" "${ARTIFACT_DIR}/install-claude-code-local.sh" "curl -fsSL https://claude.ai/install.sh | bash"
+
+SCRIPTS_DIR="$(dirname -- "$ENGINE")"
+REFRESH_REPO="${TEST_ROOT}/refresh-repo"
+REFRESH_CATALOG="${REFRESH_REPO}/wizard/catalog/catalog.generated.js"
+REFRESH_PREVIOUS="${TEST_ROOT}/refresh-previous.js"
+mkdir -p "${REFRESH_REPO}/scripts" "${REFRESH_REPO}/wizard/catalog"
+cp -- "${SCRIPTS_DIR}/refresh-model-catalog.sh" "${SCRIPTS_DIR}/generate-model-catalog.js" \
+  "${SCRIPTS_DIR}/summarize-model-catalog.js" "${REFRESH_REPO}/scripts/"
+cat >"$REFRESH_PREVIOUS" <<'JS'
+window.EZDEPLOY_CATALOG_SNAPSHOT = Object.freeze({"schemaVersion":1,"generatedAt":"2026-01-01T00:00:00.000Z","regions":["eastus2","swedencentral"],"warnings":[],"models":[{"key":"anthropic|claude-opus-4-1|1","regions":{"eastus2":{"lifecycle":"GA"}}}]});
+JS
+
+run_refresh() {
+  local scenario="$1"
+  shift
+  CASE_NUMBER=$((CASE_NUMBER + 1))
+  LAST_OUTPUT="${TEST_ROOT}/case-${CASE_NUMBER}.out"
+  LAST_LOG="${TEST_ROOT}/case-${CASE_NUMBER}.az.log"
+  : >"$LAST_LOG"
+  cp -- "$REFRESH_PREVIOUS" "$REFRESH_CATALOG"
+  set +e
+  FAKE_AZ_SCENARIO="$scenario" \
+  FAKE_AZ_LOG="$LAST_LOG" \
+  FAKE_AZ_STATE="$TEST_ROOT" \
+  FAKE_CATALOG="$FAKE_CATALOG" \
+  FAKE_USAGE="$FAKE_USAGE" \
+  PATH="${FAKE_BIN}:$PATH" \
+    bash "${REFRESH_REPO}/scripts/refresh-model-catalog.sh" "$@" >"$LAST_OUTPUT" 2>&1
+  LAST_STATUS=$?
+  set -e
+}
+
+assert_refresh_catalog_unchanged() {
+  if cmp -s "$REFRESH_PREVIOUS" "$REFRESH_CATALOG"; then
+    pass "$1"
+  else
+    fail "$1" "the wizard catalog was modified"
+  fi
+}
+
+if command -v node >/dev/null 2>&1; then
+  run_refresh new --help
+  expect_success "catalog refresh help succeeds"
+  assert_contains "catalog refresh help documents the subscription option" "$LAST_OUTPUT" "--subscription ID_OR_NAME"
+
+  run_refresh new --subscription local-test
+  expect_success "catalog refresh regenerates the wizard catalog"
+  assert_contains "catalog refresh names the queried subscription" "$LAST_OUTPUT" "Using subscription Local Test Subscription."
+  assert_contains "catalog refresh queries East US 2 in the requested subscription" "$LAST_LOG" "cognitiveservices model list --location eastus2 --subscription local-test --output json"
+  assert_contains "catalog refresh queries Sweden Central in the requested subscription" "$LAST_LOG" "cognitiveservices model list --location swedencentral --subscription local-test --output json"
+  assert_contains "refreshed catalog contains live models" "$REFRESH_CATALOG" '"key": "anthropic|claude-sonnet-5|2"'
+  assert_not_contains "refreshed catalog records a new generation time" "$REFRESH_CATALOG" "2026-01-01T00:00:00.000Z"
+  assert_contains "catalog refresh reports added models" "$LAST_OUTPUT" "- anthropic|claude-sonnet-5|2"
+  assert_contains "catalog refresh reports removed models" "$LAST_OUTPUT" "- anthropic|claude-opus-4-1|1"
+  assert_not_contains "catalog refresh summary does not claim tests passed" "$LAST_OUTPUT" "regression tests passed"
+
+  run_refresh refresh-region-failure
+  expect_failure "catalog refresh stops when one region fails" "The swedencentral catalog query failed"
+  assert_refresh_catalog_unchanged "failed regional query leaves the wizard catalog unchanged"
+
+  run_refresh refresh-signed-out
+  expect_failure "catalog refresh requires a signed-in Azure CLI" "Azure CLI is not signed in"
+  assert_not_contains "signed-out catalog refresh makes no catalog query" "$LAST_LOG" "cognitiveservices model list"
+  assert_refresh_catalog_unchanged "signed-out catalog refresh leaves the wizard catalog unchanged"
+
+  run_refresh new --unknown
+  expect_failure "catalog refresh rejects unknown arguments" "Unknown argument: --unknown"
+else
+  fail "catalog refresh script tests" "Node.js is required"
+fi
 
 if command -v pwsh.exe >/dev/null 2>&1; then
   POWERSHELL_COMMAND="pwsh.exe"
