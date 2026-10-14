@@ -116,7 +116,8 @@ globalThis.__wizard = {
   ensureComplete,
   command,
   launcher,
-  renderModelCards
+  renderModelCards,
+  groupByFamily
 };`,
   context,
   { filename: wizardPath }
@@ -381,6 +382,22 @@ test("generated snapshot loads and malformed or missing snapshots use the curate
     "duplicate catalog keys should use fallback"
   );
   assert(/catalogState\.fallbackUsed[\s\S]*curated fallback/i.test(appScript), "fallback warning is not prominent in application logic");
+});
+
+test("uncurated catalog models get readable names and stay out of older versions", () => {
+  const catalog = structuredClone(context.window.EZDEPLOY_CATALOG_FALLBACK);
+  const template = catalog.models.find((model) => model.key === "anthropic|claude-opus-4-8|2");
+  catalog.models.push({ ...structuredClone(template), key: "anthropic|claude-opus-9-9|1", name: "claude-opus-9-9", version: "1" });
+  const state = wizard.loadCatalog(null, catalog);
+  const models = wizard.catalogModelsForRegion(state, "eastus2");
+  const uncurated = models.find((model) => model.model === "claude-opus-9-9");
+  assertEqual(uncurated.label, "Claude Opus 9.9", "uncurated model label");
+  const opus = wizard.groupByFamily(models).find((group) => group.family === "opus");
+  assertEqual(opus.visible[0].model, "claude-opus-9-9", "newest uncurated model should lead its family");
+  assert(!opus.older.some((model) => model.model === "claude-opus-9-9"), "newest uncurated model was filed under older versions");
+  assert(opus.visible.some((model) => model.recommended), "curated recommendation should stay visible");
+  const sonnet = wizard.groupByFamily(models).find((group) => group.family === "sonnet");
+  assertEqual(sonnet.visible.slice(0, 2).map((model) => model.key).join(","), "sonnet-5-5-v2,sonnet-5-5-v1", "curated order should still order versions within a generation");
 });
 
 test("every curated fallback model carries overlay metadata", () => {

@@ -208,8 +208,28 @@
         validRegionalMetadata(model.regions?.[region])
       ))
     }
+    function modelGeneration(name){
+      const parts=[];
+      for(const part of name.replace(/^claude-[a-z]+-/,"").split("-")){
+        if(!/^\d+$/.test(part))break;
+        parts.push(Number(part))
+      }
+      return parts
+    }
+    function compareGenerations(left,right){
+      for(let index=0;index<Math.max(left.length,right.length);index++){
+        const difference=(left[index]||0)-(right[index]||0);
+        if(difference)return difference
+      }
+      return 0
+    }
     function inferredName(model){
-      return model.name.split("-").map((part,index)=>index===0?"Claude":part.charAt(0).toUpperCase()+part.slice(1)).join(" ")
+      return model.name.split("-").reduce((words,part,index)=>{
+        if(index===0)words.push("Claude");
+        else if(/^\d+$/.test(part)&&/^\d+(\.\d+)*$/.test(words.at(-1)))words[words.length-1]+=`.${part}`;
+        else words.push(part.charAt(0).toUpperCase()+part.slice(1));
+        return words
+      },[]).join(" ")
     }
     function hostingLabel(hostedOn){
       if(hostedOn==="azure")return"Azure infrastructure";
@@ -229,6 +249,7 @@
             family:model.family,
             label:curated.friendlyName||inferredName(model),
             model:model.name,
+            generation:modelGeneration(model.name),
             version:model.version,
             deployment:curated.defaultDeploymentName||null,
             recommended:curated.recommended===true,
@@ -238,7 +259,7 @@
             regions:Object.keys(model.regions).filter(region=>model.regions[region]?.skus?.some(sku=>sku.name==="GlobalStandard")),
             regionMetadata:model.regions
           }
-        }).sort((left,right)=>left.familyOrder-right.familyOrder||left.order-right.order||left.label.localeCompare(right.label)||right.version.localeCompare(left.version,undefined,{numeric:true}));
+        }).sort((left,right)=>left.familyOrder-right.familyOrder||compareGenerations(right.generation,left.generation)||left.order-right.order||left.label.localeCompare(right.label)||right.version.localeCompare(left.version,undefined,{numeric:true}));
       let models;
       try{
         models=normalize();
@@ -433,6 +454,19 @@
       ].join("");
       return`<article class="version-row" data-model-card="${escape(model.key)}"><div class="row-main"><input class="model-check" id="model-${escape(model.key)}" type="checkbox" data-key="${escape(model.key)}"><label class="row-title" for="model-${escape(model.key)}"><h3>${escape(model.label)} <span class="ver">@ ${escape(model.version)}</span></h3></label><code class="row-id">${escape(model.model)}</code><span class="row-tags">${badges}<span class="tag">${escape(model.hosting)}</span></span></div><div class="model-controls"><div><label for="capacity-${escape(model.key)}">Capacity</label><input class="model-capacity" id="capacity-${escape(model.key)}" data-key="${escape(model.key)}" type="number" min="1" step="1" value="10" disabled></div><div><label for="deployment-${escape(model.key)}">Deployment name</label><input class="deployment-name" id="deployment-${escape(model.key)}" data-key="${escape(model.key)}" value="${escape(model.deployment)}" disabled></div><label class="default-label"><input class="default-model" id="default-${escape(model.key)}" type="radio" name="default-${escape(model.family)}" value="${escape(model.key)}" disabled>Claude Code ${escape(model.family)} default</label></div></article>`
     }
+    function groupByFamily(models){
+      const families=[];
+      models.forEach(model=>{
+        let group=families.find(entry=>entry.family===model.family);
+        if(!group){group={family:model.family,models:[]};families.push(group)}
+        group.models.push(model)
+      });
+      return families.map(({family,models:members})=>{
+        const newest=members.reduce((best,model)=>compareGenerations(model.generation,best.generation)>0?model:best).generation;
+        const visible=members.filter(model=>compareGenerations(model.generation,newest)===0||model.recommended||model.tested||model.lifecycle==="Preview");
+        return{family,visible,older:members.filter(model=>!visible.includes(model))}
+      })
+    }
     function renderModelCards(){
       const previous=selectedModels();
       const previousDefaults=defaultModels();
@@ -440,19 +474,10 @@
       Object.keys(modelMetadata).forEach(key=>delete modelMetadata[key]);
       models.forEach(model=>{modelMetadata[model.key]=model});
       const previousKeys=new Set(previous.map(model=>model.key));
-      const families=[];
-      models.forEach(model=>{
-        let group=families.find(entry=>entry.family===model.family);
-        if(!group){group={family:model.family,models:[]};families.push(group)}
-        group.models.push(model)
-      });
-      $("modelList").innerHTML=families.map(group=>{
-        const latestName=group.models[0].model;
-        const visible=group.models.filter(model=>model.model===latestName||model.recommended||model.tested||model.lifecycle==="Preview");
-        const older=group.models.filter(model=>!visible.includes(model));
-        const info=familyInfo[group.family]||{title:group.family,role:""};
+      $("modelList").innerHTML=groupByFamily(models).map(({family,visible,older})=>{
+        const info=familyInfo[family]||{title:family,role:""};
         const olderHtml=older.length?`<details class="older"${older.some(model=>previousKeys.has(model.key))?" open":""}><summary>Show ${older.length} older version${older.length>1?"s":""}</summary>${older.map(modelRow).join("")}</details>`:"";
-        return`<section class="family" data-family="${escape(group.family)}"><div class="family-header"><span class="family-name">${escape(info.title)}</span><span class="family-role">${escape(info.role)}</span><span class="family-count" data-family-count="${escape(group.family)}">None selected</span></div>${visible.map(modelRow).join("")}${olderHtml}</section>`
+        return`<section class="family" data-family="${escape(family)}"><div class="family-header"><span class="family-name">${escape(info.title)}</span><span class="family-role">${escape(info.role)}</span><span class="family-count" data-family-count="${escape(family)}">None selected</span></div>${visible.map(modelRow).join("")}${olderHtml}</section>`
       }).join("")||'<div class="notice prominent"><b>No eligible models in this view</b><p>Check the selected region or explicitly opt in to Preview models. The live Cloud Shell catalog remains authoritative.</p></div>';
       document.querySelectorAll(".model-check").forEach(input=>input.addEventListener("change",()=>syncModelSelection(input)));
       document.querySelectorAll(".default-model").forEach(input=>input.addEventListener("change",()=>{renderDefaults();renderSelectionSummary()}));
