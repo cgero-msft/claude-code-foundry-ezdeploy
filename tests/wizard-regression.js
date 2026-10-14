@@ -507,6 +507,7 @@ test("snapshot age over seven days warns but does not invalidate the catalog", (
   assertEqual(stale.stale, true, "snapshot older than seven days should be stale");
   assert(stale.models.length > 0, "stale snapshot should remain usable");
   assert(/catalogState\.stale[\s\S]*older than seven days/i.test(appScript), "stale warning is not rendered");
+  assert(/catalogState\.fallbackUsed\|\|catalogState\.stale\)messages\.push\("[^"]*scripts\/refresh-model-catalog\.sh/.test(appScript), "stale and fallback warnings do not explain how to refresh");
 });
 
 test("missing hosting metadata is not guessed", () => {

@@ -9,7 +9,7 @@ Deploy the Azure resources and exact Claude model versions needed to use Claude 
 
 The full flow is five steps; each links to its detailed section below.
 
-1. Open [`wizard/index.html`](wizard/index.html) in a browser and select the Azure target and exact model versions, capacities, and Claude Code defaults. No sign-in or network access is required. See [Anonymous regional model catalog](#anonymous-regional-model-catalog).
+1. Open [`wizard/index.html`](wizard/index.html) in a browser and select the Azure target and exact model versions, capacities, and Claude Code defaults. No sign-in or network access is required. See [Anonymous regional model catalog](#anonymous-regional-model-catalog). The checked-in catalog can lag new model releases; to choose from current availability, first [refresh the catalog yourself](#refresh-the-catalog-yourself).
 2. Download the generated dry-run and deployment launchers. See [Generate the launchers](#generate-the-launchers).
 3. Upload both launchers and `scripts/ezdeploy-engine.sh` to one Azure Cloud Shell folder and run the dry run to validate the live catalog, quota, and existing resources without changes. See [Run the dry run first](#run-the-dry-run-first).
 4. Run the deployment launcher, review the live preflight output, and type `ACCEPT`. See [Confirm and deploy](#confirm-and-deploy).
@@ -48,6 +48,7 @@ flowchart LR
 | `wizard/catalog/catalog.overlay.js` | Human-curated friendly names, ordering, default deployment names, and EZDeploy Recommended/Tested status. |
 | `wizard/catalog/catalog.fallback.js` | Curated emergency catalog used when the generated snapshot is missing or malformed. |
 | `scripts/ezdeploy-engine.sh` | Validate and deploy the selected configuration from Azure Cloud Shell. |
+| `scripts/refresh-model-catalog.sh` | Refresh the wizard catalog on demand from the live Azure catalog, using your signed-in Azure CLI. |
 | `scripts/generate-model-catalog.js` | Normalize and validate regional Azure catalog responses without third-party packages. |
 | `tests/run-regression.ps1` | Run the wizard and engine regression suites locally. |
 | `tests/catalog-generator-regression.js` | Test catalog normalization and last-known-good failure behavior. |
@@ -112,6 +113,22 @@ The curated overlay currently marks these as recommended and tested starting cho
 These are reviewed defaults, not an availability guarantee. Azure's live regional catalog, model metadata, SKU support, quota, commercial terms, and hosting information are authoritative at execution time. Stop if the engine's live output differs from what you are authorized to deploy.
 
 Claude Code routes the `sonnet`, `haiku`, and `opus` aliases to deployment names. Select one family default for every family you deploy. If you select multiple versions from one family, explicitly choose which deployment Claude Code should use by default.
+
+### Refresh the catalog yourself
+
+The checked-in snapshot only changes when a refresh is merged, so it can miss recently released models. To pick from current availability, regenerate the catalog from the live Azure catalog in a clone of this repository. You need Azure CLI signed in to a subscription you can read model availability in, and Node.js. Azure Cloud Shell has both:
+
+```bash
+git clone https://github.com/cgero-msft/claude-code-foundry-ezdeploy.git
+cd claude-code-foundry-ezdeploy
+bash scripts/refresh-model-catalog.sh
+```
+
+Add `--subscription ID_OR_NAME` to query a subscription other than the Azure CLI default. The script makes two read-only `az cognitiveservices model list` calls, for East US 2 and Sweden Central, rewrites `wizard/catalog/catalog.generated.js`, and lists the model versions added, removed, or changed since the previous catalog. If either query or the validation fails, the existing catalog is left unchanged.
+
+Then open `wizard/index.html` from the same clone. If you refreshed in Cloud Shell but run the wizard on your workstation, download `wizard/catalog/catalog.generated.js` from Cloud Shell (**Manage files** > **Download**) and replace the same file in your local clone.
+
+The refreshed catalog reflects the subscription you queried. Overlay badges and friendly names still come from `catalog.overlay.js`, so a model released after the overlay was last updated appears with an inferred name and no EZDeploy badges. The engine's live preflight remains authoritative for every selection.
 
 ## Generate the launchers
 

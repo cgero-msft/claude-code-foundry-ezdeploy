@@ -413,6 +413,7 @@
       const messages=[];
       if(catalogState.fallbackUsed)messages.push("The generated snapshot is missing or malformed. The wizard is using the curated fallback; verify every selection during the live Cloud Shell preflight.");
       if(catalogState.stale)messages.push(`The reference snapshot is ${catalogState.ageDays} days old. Continue only after reviewing the live preflight; age alone does not block launcher generation.`);
+      if(catalogState.fallbackUsed||catalogState.stale)messages.push("To load current availability, run bash scripts/refresh-model-catalog.sh with a signed-in Azure CLI, such as in Azure Cloud Shell, then reload this page.");
       if(catalogState.warnings.length)messages.push(`The snapshot contains ${catalogState.warnings.length} metadata conflict warning(s); ambiguous hosting is shown as unavailable.`);
       $("catalogStatus").classList.toggle("hidden",messages.length===0);
       $("catalogStatusTitle").textContent=catalogState.fallbackUsed?"Curated fallback catalog in use":catalogState.stale?"Catalog snapshot is older than seven days":"Catalog metadata warning";
