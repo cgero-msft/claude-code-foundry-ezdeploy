@@ -328,6 +328,8 @@ elif [[ "${1:-}" == rest ]]; then
     printf '{"isSubdomainAvailable":true}\n'
   elif [[ "$method" == get && "$url" == *Microsoft.MarketplaceOrdering* ]]; then
     printf '{"properties":{"accepted":true}}\n'
+  elif [[ "$method" == patch && "$url" == *'/Microsoft.CognitiveServices/accounts/'* && "$body" == *'"disableLocalAuth":true'* ]]; then
+    touch "${FAKE_AZ_STATE}/account-local-auth"
   elif [[ "$method" == put && "$url" == *'/deployments/'* ]]; then
     if [[ "$scenario" == deployment-rejected ]]; then
       printf 'DeploymentModelNotSupported: selected model deployment was rejected.\n' >&2
@@ -463,9 +465,16 @@ run_engine new --help
 expect_success "engine help succeeds"
 assert_contains "help documents reused-account local-auth opt-in" "$LAST_OUTPUT" "--disable-local-auth-on-reuse"
 
-run_engine local-auth-unsupported --model claude-sonnet-5:2:sonnet-v2:5 --yes
-expect_failure "unsupported local-auth CLI is rejected before mutation" "does not support --disable-local-auth"
-assert_not_contains "unsupported local-auth CLI does not mutate Azure" "$LAST_LOG" "group create"
+run_engine local-auth-unsupported --model claude-sonnet-5:2:sonnet-v2:5 --dry-run
+expect_success "CLI without --disable-local-auth passes preflight"
+assert_contains "CLI without --disable-local-auth reports the REST fallback" "$LAST_OUTPUT" "disabled through the Azure Resource Manager API"
+assert_not_contains "REST fallback dry run does not patch the account" "$LAST_LOG" "rest --method patch"
+
+run_engine local-auth-unsupported --model claude-sonnet-5:2:sonnet-v2:5 --output-dir "${TEST_ROOT}/local-auth-rest-package" --yes
+expect_success "CLI without --disable-local-auth deploys through the REST fallback"
+assert_not_contains "REST fallback omits the unsupported CLI flag" "$LAST_LOG" "--disable-local-auth true"
+assert_contains "REST fallback disables local authentication" "$LAST_LOG" "rest --method patch"
+assert_before "REST fallback runs after account creation" "$LAST_LOG" "cognitiveservices account create -g" "rest --method patch"
 
 run_engine new "${BASE_EXACT[@]}"
 expect_success "exact and alias model syntax succeeds"
@@ -475,7 +484,7 @@ assert_contains "first same-family selection is deterministic default" "$LAST_OU
 assert_contains "same quota pool is aggregated" "$LAST_OUTPUT" "AIServices.GlobalStandard.claude-sonnet-5: 90 available; 18 additional capacity required."
 
 if grep -Ev -- '--help' "$LAST_LOG" |
-    grep -Eq '^(provider register|group create|cognitiveservices account (create|update)|cognitiveservices account project create|role assignment create|rest --method put)'; then
+    grep -Eq '^(provider register|group create|cognitiveservices account (create|update)|cognitiveservices account project create|role assignment create|rest --method (put|patch))'; then
   fail "dry run is non-mutating" "a mutating fake az command was invoked"
 else
   pass "dry run is non-mutating"
