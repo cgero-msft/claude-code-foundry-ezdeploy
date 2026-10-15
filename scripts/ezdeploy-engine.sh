@@ -416,7 +416,8 @@ normalize_catalog() {
     def conflict($rows; expression):
       values($rows; expression) | if length > 1 then . else [] end;
     def publisher:
-      .publisher.name // .publisher // .publisherName // .modelPublisher // "";
+      (.publisher | if type == "object" then .name else . end) //
+      .publisherName // .modelPublisher // "";
     def hosting:
       .capabilities.hostedOn // .hostingType // .hostingModel //
       .inferenceContainerProperties.hostingType // "";

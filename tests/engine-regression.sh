@@ -455,6 +455,14 @@ assert_contains "legacy direct-engine default profile is lean" "$LAST_OUTPUT" "c
 assert_contains "lean default includes Haiku" "$LAST_OUTPUT" "claude-haiku-4-5"
 assert_not_contains "lean default excludes costly Opus" "$LAST_OUTPUT" "claude-opus-4-6"
 
+STRING_PUBLISHER_CATALOG='[{"kind":"AIServices","model":{"format":"Anthropic","name":"claude-sonnet-5","version":"2","publisher":"Anthropic","skus":[{"name":"GlobalStandard","usageName":"AIServices.GlobalStandard.claude-sonnet-5"}]}},{"kind":"AIServices","model":{"format":"OpenAI","name":"gpt-x","version":"1","publisher":{"name":"OpenAI"},"skus":[]}}]'
+if NORMALIZED="$(bash -c 'source "$1"; normalize_catalog' _ "$ENGINE" <<<"$STRING_PUBLISHER_CATALOG" 2>&1)" &&
+   jq -e 'map(.publisher.name) == ["Anthropic","OpenAI"]' <<<"$NORMALIZED" >/dev/null; then
+  pass "catalog normalization accepts string and object publishers"
+else
+  fail "catalog normalization accepts string and object publishers" "$NORMALIZED"
+fi
+
 run_engine new --profile full --dry-run
 expect_success "explicit full compatibility profile succeeds"
 assert_contains "explicit full profile retains Opus" "$LAST_OUTPUT" "claude-opus-4-6"
