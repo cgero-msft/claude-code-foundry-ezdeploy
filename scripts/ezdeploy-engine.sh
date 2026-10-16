@@ -36,6 +36,7 @@ DISABLE_LOCAL_AUTH_ON_REUSE=false
 ACCOUNT_EXISTS=false
 ACCOUNT_JSON=""
 LOCAL_AUTH_COMMAND=""
+LOCAL_AUTH_VIA_REST=false
 CATALOG_JSON="[]"
 DEPLOYMENTS_JSON="[]"
 TERMS_CONFIRMED_AT=""
@@ -384,9 +385,14 @@ verify_local_auth_compatibility() {
   fi
   help_text="$(az cognitiveservices account "$LOCAL_AUTH_COMMAND" --help 2>&1)" ||
     die "Unable to verify Azure CLI compatibility for Foundry account ${LOCAL_AUTH_COMMAND}."
-  grep -Eq -- '(^|[[:space:]])--disable-local-auth([[:space:]]|$)' <<<"$help_text" ||
-    die "Azure CLI does not support --disable-local-auth for 'az cognitiveservices account ${LOCAL_AUTH_COMMAND}'. Upgrade Azure CLI before changing Foundry resources."
-  ok "Verified Azure CLI can disable local authentication during account ${LOCAL_AUTH_COMMAND}."
+  if grep -Eq -- '(^|[[:space:]])--disable-local-auth([[:space:]]|$)' <<<"$help_text"; then
+    LOCAL_AUTH_VIA_REST=false
+    ok "Verified Azure CLI can disable local authentication during account ${LOCAL_AUTH_COMMAND}."
+  else
+    # Newer Azure CLI releases dropped --disable-local-auth from account create/update.
+    LOCAL_AUTH_VIA_REST=true
+    ok "Azure CLI has no --disable-local-auth option; local authentication will be disabled through the Azure Resource Manager API after account ${LOCAL_AUTH_COMMAND}."
+  fi
 }
 
 validate_custom_domain_available() {
@@ -913,6 +919,8 @@ ensure_provider_registered() {
 
 ensure_foundry_account() {
   local was_existing previous_disable_local_auth current_disable_local_auth
+  local -a local_auth_args=()
+  [[ "$LOCAL_AUTH_VIA_REST" == true ]] || local_auth_args=(--disable-local-auth true)
   was_existing="$ACCOUNT_EXISTS"
   previous_disable_local_auth="$(jq -r '.properties.disableLocalAuth // false' <<<"$ACCOUNT_JSON")"
   info "Creating or reusing resource group ${RESOURCE_GROUP}..."
@@ -927,9 +935,10 @@ ensure_foundry_account() {
         -g "$RESOURCE_GROUP" -n "$ACCOUNT_NAME" \
         --custom-domain "$ACCOUNT_NAME" \
         --allow-project-management true \
-        --disable-local-auth true \
+        "${local_auth_args[@]}" \
         --subscription "$SUBSCRIPTION" -o none ||
         die "Unable to update Foundry account ${ACCOUNT_NAME}."
+      [[ "$LOCAL_AUTH_VIA_REST" == false ]] || disable_local_auth_via_rest
     else
       az cognitiveservices account update \
         -g "$RESOURCE_GROUP" -n "$ACCOUNT_NAME" \
@@ -945,11 +954,12 @@ ensure_foundry_account() {
       --kind AIServices --sku S0 \
       --custom-domain "$ACCOUNT_NAME" \
       --allow-project-management true \
-      --disable-local-auth true \
+      "${local_auth_args[@]}" \
       --assign-identity --yes \
       --subscription "$SUBSCRIPTION" -o none ||
       die "Unable to create Foundry account ${ACCOUNT_NAME}."
     ACCOUNT_EXISTS=true
+    [[ "$LOCAL_AUTH_VIA_REST" == false ]] || disable_local_auth_via_rest
   fi
 
   ACCOUNT_JSON="$(az cognitiveservices account show \
@@ -971,6 +981,15 @@ ensure_foundry_account() {
   fi
   wait_for_state "Foundry account ${ACCOUNT_NAME}" account \
     -g "$RESOURCE_GROUP" -n "$ACCOUNT_NAME" --subscription "$SUBSCRIPTION"
+}
+
+disable_local_auth_via_rest() {
+  local url
+  url="https://management.azure.com/subscriptions/${SUBSCRIPTION}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.CognitiveServices/accounts/${ACCOUNT_NAME}?api-version=${API_VERSION}"
+  info "Disabling local authentication on ${ACCOUNT_NAME}..."
+  az rest --method patch --url "$url" \
+    --body '{"properties":{"disableLocalAuth":true}}' -o none ||
+    die "Unable to disable local authentication on Foundry account ${ACCOUNT_NAME}."
 }
 
 ensure_foundry_project() {
