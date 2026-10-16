@@ -1332,16 +1332,23 @@ if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
 New-Item -ItemType Directory -Path \$ClaudeDir -Force | Out-Null
 Copy-Item (Join-Path \$Here 'claude-foundry.ps1') (Join-Path \$ClaudeDir 'foundry.ps1') -Force
 
-if (-not (Test-Path \$PROFILE.CurrentUserAllHosts)) {
-    New-Item -ItemType File -Path \$PROFILE.CurrentUserAllHosts -Force | Out-Null
-}
+# Windows PowerShell and PowerShell 7 keep separate profiles; update both so either shell loads Foundry mode.
+\$Documents = [Environment]::GetFolderPath('MyDocuments')
 \$ProfileLine = '. "\$HOME\\.claude\\foundry.ps1"'
-\$ProfileContent = Get-Content \$PROFILE.CurrentUserAllHosts -Raw
-if (\$ProfileContent -notmatch [regex]::Escape(\$ProfileLine)) {
-    [System.IO.File]::AppendAllText(
-        \$PROFILE.CurrentUserAllHosts,
-        [Environment]::NewLine + \$ProfileLine + [Environment]::NewLine
-    )
+foreach (\$Edition in 'WindowsPowerShell', 'PowerShell') {
+    \$ProfilePath = Join-Path \$Documents "\$Edition\\profile.ps1"
+    if (-not (Test-Path \$ProfilePath)) {
+        New-Item -ItemType File -Path \$ProfilePath -Force | Out-Null
+    }
+    # Get-Content -Raw returns \$null for an empty file, and \$null -notmatch never matches.
+    \$ProfileContent = [string](Get-Content \$ProfilePath -Raw)
+    if (\$ProfileContent -notmatch [regex]::Escape(\$ProfileLine)) {
+        [System.IO.File]::AppendAllText(
+            \$ProfilePath,
+            [Environment]::NewLine + \$ProfileLine + [Environment]::NewLine
+        )
+    }
+    Write-Host "Foundry settings load from \$ProfilePath"
 }
 . (Join-Path \$ClaudeDir 'foundry.ps1')
 claude --version
