@@ -855,6 +855,47 @@ assert_contains "PowerShell installer reports the official HTTPS download" "${AR
 assert_contains "PowerShell installer executes the saved installer" "${ARTIFACT_DIR}/install-claude-code-windows.ps1" '& $Installer'
 assert_contains "PowerShell installer cleans up its temporary file" "${ARTIFACT_DIR}/install-claude-code-windows.ps1" 'Remove-Item -LiteralPath $Installer'
 assert_not_contains "PowerShell installer does not use Invoke-Expression" "${ARTIFACT_DIR}/install-claude-code-windows.ps1" "Invoke-Expression"
+assert_contains "PowerShell installer updates both PowerShell editions" "${ARTIFACT_DIR}/install-claude-code-windows.ps1" "foreach (\$Edition in 'WindowsPowerShell', 'PowerShell')"
+assert_contains "PowerShell installer resolves profiles from the Documents folder" "${ARTIFACT_DIR}/install-claude-code-windows.ps1" "[Environment]::GetFolderPath('MyDocuments')"
+assert_not_contains "PowerShell installer doesn't depend on the running edition's profile" "${ARTIFACT_DIR}/install-claude-code-windows.ps1" '$PROFILE.CurrentUserAllHosts'
+
+# Run the generated profile-update block against a temporary Documents folder:
+# one edition has no profile file and the other has an empty one.
+PROFILE_TEST_SCRIPT="$(mktemp "${TMPDIR:-/tmp}/ezdeploy-profile-test.XXXXXX.ps1")"
+cat >"$PROFILE_TEST_SCRIPT" <<'PS_EOF'
+param([string]$InstallerPath)
+$ErrorActionPreference = 'Stop'
+$text = Get-Content -Raw -LiteralPath $InstallerPath
+$match = [regex]::Match($text, '(?s)\$ProfileLine = .*?Write-Host "Foundry settings load from \$ProfilePath"\s*\}')
+if (-not $match.Success) { Write-Output 'block-not-found'; exit 1 }
+$Documents = Join-Path ([System.IO.Path]::GetTempPath()) ('ezdeploy-docs-' + [guid]::NewGuid())
+New-Item -ItemType Directory -Path (Join-Path $Documents 'PowerShell') -Force | Out-Null
+New-Item -ItemType File -Path (Join-Path $Documents 'PowerShell\profile.ps1') -Force | Out-Null
+try {
+    & ([scriptblock]::Create($match.Value)) *> $null
+    & ([scriptblock]::Create($match.Value)) *> $null
+    $line = '. "$HOME\.claude\foundry.ps1"'
+    foreach ($Edition in 'WindowsPowerShell', 'PowerShell') {
+        $count = @(Get-Content (Join-Path $Documents "$Edition\profile.ps1") | Where-Object { $_ -eq $line }).Count
+        Write-Output "$Edition=$count"
+    }
+} finally {
+    Remove-Item -LiteralPath $Documents -Recurse -Force
+}
+PS_EOF
+PROFILE_TEST_SCRIPT_ARG="$PROFILE_TEST_SCRIPT"
+PS_FILE_ARG="$PS_FILE"
+if command -v cygpath >/dev/null 2>&1; then
+  PROFILE_TEST_SCRIPT_ARG="$(cygpath -w "$PROFILE_TEST_SCRIPT")"
+  PS_FILE_ARG="$(cygpath -w "$PS_FILE")"
+fi
+PROFILE_TEST_OUTPUT="$("$POWERSHELL_COMMAND" -NoProfile -ExecutionPolicy Bypass -File "$PROFILE_TEST_SCRIPT_ARG" -InstallerPath "$PS_FILE_ARG" 2>&1 | tr -d '\r' || true)"
+rm -f "$PROFILE_TEST_SCRIPT"
+if grep -qx 'WindowsPowerShell=1' <<<"$PROFILE_TEST_OUTPUT" && grep -qx 'PowerShell=1' <<<"$PROFILE_TEST_OUTPUT"; then
+  pass "PowerShell installer adds the Foundry line once to missing and empty profiles"
+else
+  fail "PowerShell installer adds the Foundry line once to missing and empty profiles" "$PROFILE_TEST_OUTPUT"
+fi
 
 if jq -e '
   ."claudeCode.disableLoginPrompt" == true and

@@ -206,7 +206,7 @@ A successful deployment creates `~/claude-code-foundry` and `~/claude-code-found
 | `vscode-settings.snippet.json` | Claude Code extension environment settings. |
 | `deployment-report.json` | Deployment identifiers, endpoints, model versions, capacities, and provisioning states. |
 | `install-claude-code-local.sh` | Bash/WSL installer and profile setup. |
-| `install-claude-code-windows.ps1` | Windows PowerShell installer and profile setup. |
+| `install-claude-code-windows.ps1` | Windows installer. Adds the activator to both the Windows PowerShell and PowerShell 7 profiles. |
 
 Download the archive from Cloud Shell using **Manage files** > **Download**.
 
@@ -253,6 +253,8 @@ Also remove generated workstation files and any profile lines that source:
 
 - `$HOME/.claude/foundry.env`
 - `$HOME\.claude\foundry.ps1`
+
+On Windows, the installer adds that line to both `Documents\WindowsPowerShell\profile.ps1` and `Documents\PowerShell\profile.ps1`.
 
 Review role assignments before removing them; the engine may have reused pre-existing access rather than creating a new assignment.
 
