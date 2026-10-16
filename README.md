@@ -62,7 +62,7 @@ The wizard-generated launcher and `scripts/ezdeploy-engine.sh` must be uploaded 
 
 You need:
 
-1. A paid Azure subscription. Model deployments and supporting resources can incur charges.
+1. A paid Azure subscription. Model deployments and supporting resources can incur charges. Workshop participants should review the [subscription eligibility requirements](workshop/pre-work/README.md#what-you-need).
 2. Permission to create or update a resource group, an `AIServices` account, a Foundry project, and model deployments.
 3. Role-assignment permission only if you choose to assign the signed-in user.
 4. A runtime role recognized by the engine for each Claude Code user: Cognitive Services User, Cognitive Services OpenAI User, Cognitive Services OpenAI Contributor, Foundry User, Foundry Owner, Foundry Project Manager, Azure AI Project Manager, Azure AI User, Azure AI Owner, or Azure AI Developer.
@@ -71,7 +71,7 @@ You need:
 7. Regional model availability and quota for every exact model, version, SKU, and capacity selected.
 8. Azure CLI 2.83.0 or later. Azure Cloud Shell also supplies Bash, `jq`, and `tar`.
 
-New Foundry accounts are configured for Microsoft Entra ID authentication only. When an existing account is reused, the engine preserves its current local-authentication setting by default so existing key-authenticated workloads are not broken. The project does not create, retrieve, or store API keys.
+New Foundry accounts are configured for Microsoft Entra ID authentication only. When an existing account is reused, the engine preserves its current local-authentication setting by default so existing key-authenticated workloads are not broken. Azure CLI 2.91 and later no longer expose `--disable-local-auth`; when needed, the engine disables local authentication through an Azure Resource Manager PATCH and verifies the setting before proceeding. The project does not create, retrieve, or store API keys.
 
 Owner, Contributor, Cognitive Services Contributor, Foundry Account Owner, and Azure AI Account Owner are management-plane roles. They do not provide the data-plane access required for Entra-authenticated model inference.
 
