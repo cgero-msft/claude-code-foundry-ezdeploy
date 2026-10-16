@@ -1,6 +1,6 @@
 window.EZDEPLOY_CATALOG_SNAPSHOT = Object.freeze({
   "schemaVersion": 1,
-  "generatedAt": "2026-09-03T18:48:13.438Z",
+  "generatedAt": "2026-10-15T05:07:55.856Z",
   "source": {
     "type": "Azure Cognitive Services regional Models API",
     "command": "az cognitiveservices model list",
@@ -29,7 +29,7 @@ window.EZDEPLOY_CATALOG_SNAPSHOT = Object.freeze({
           "capabilities": {
             "hostedOn": "azure"
           },
-          "deprecationDate": "2026-10-19T00:00:00Z",
+          "deprecationDate": "2026-11-15T00:00:00Z",
           "skus": [
             {
               "name": "GlobalStandard",
@@ -38,7 +38,7 @@ window.EZDEPLOY_CATALOG_SNAPSHOT = Object.freeze({
                 "maximum": 1000000,
                 "default": 10
               },
-              "deprecationDate": "2026-10-19T00:00:00+00:00"
+              "deprecationDate": "2026-11-15T00:00:00+00:00"
             }
           ]
         },
@@ -48,7 +48,7 @@ window.EZDEPLOY_CATALOG_SNAPSHOT = Object.freeze({
           "capabilities": {
             "hostedOn": "azure"
           },
-          "deprecationDate": "2026-10-19T00:00:00Z",
+          "deprecationDate": "2026-11-15T00:00:00Z",
           "skus": [
             {
               "name": "GlobalStandard",
@@ -57,7 +57,7 @@ window.EZDEPLOY_CATALOG_SNAPSHOT = Object.freeze({
                 "maximum": 1000000,
                 "default": 10
               },
-              "deprecationDate": "2026-10-19T00:00:00+00:00"
+              "deprecationDate": "2026-11-15T00:00:00+00:00"
             }
           ]
         }
@@ -80,7 +80,7 @@ window.EZDEPLOY_CATALOG_SNAPSHOT = Object.freeze({
           "capabilities": {
             "hostedOn": "anthropic"
           },
-          "deprecationDate": "2026-10-19T00:00:00Z",
+          "deprecationDate": "2026-11-15T00:00:00Z",
           "skus": [
             {
               "name": "GlobalStandard",
@@ -89,7 +89,7 @@ window.EZDEPLOY_CATALOG_SNAPSHOT = Object.freeze({
                 "maximum": 1000000,
                 "default": 10
               },
-              "deprecationDate": "2026-10-19T00:00:00+00:00"
+              "deprecationDate": "2026-11-15T00:00:00+00:00"
             }
           ]
         },
@@ -99,7 +99,7 @@ window.EZDEPLOY_CATALOG_SNAPSHOT = Object.freeze({
           "capabilities": {
             "hostedOn": "anthropic"
           },
-          "deprecationDate": "2026-10-19T00:00:00Z",
+          "deprecationDate": "2026-11-15T00:00:00Z",
           "skus": [
             {
               "name": "GlobalStandard",
@@ -108,7 +108,109 @@ window.EZDEPLOY_CATALOG_SNAPSHOT = Object.freeze({
                 "maximum": 1000000,
                 "default": 10
               },
-              "deprecationDate": "2026-10-19T00:00:00+00:00"
+              "deprecationDate": "2026-11-15T00:00:00+00:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "anthropic|claude-haiku-5-5|1",
+      "format": "Anthropic",
+      "name": "claude-haiku-5-5",
+      "version": "1",
+      "publisher": "Anthropic",
+      "family": "haiku",
+      "capabilities": {
+        "chatCompletion": true
+      },
+      "regions": {
+        "eastus2": {
+          "lifecycle": "GA",
+          "isDefaultVersion": false,
+          "capabilities": {
+            "hostedOn": "anthropic"
+          },
+          "deprecationDate": "2027-09-29T00:00:00Z",
+          "skus": [
+            {
+              "name": "GlobalStandard",
+              "usageName": "AIServices.GlobalStandard.claude-haiku-5-5",
+              "capacity": {
+                "maximum": 1000000,
+                "default": 10
+              },
+              "deprecationDate": "2027-09-29T00:00:00+00:00"
+            }
+          ]
+        },
+        "swedencentral": {
+          "lifecycle": "GA",
+          "isDefaultVersion": false,
+          "capabilities": {
+            "hostedOn": "anthropic"
+          },
+          "deprecationDate": "2027-09-29T00:00:00Z",
+          "skus": [
+            {
+              "name": "GlobalStandard",
+              "usageName": "AIServices.GlobalStandard.claude-haiku-5-5",
+              "capacity": {
+                "maximum": 1000000,
+                "default": 10
+              },
+              "deprecationDate": "2027-09-29T00:00:00+00:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "anthropic|claude-haiku-5-5|2",
+      "format": "Anthropic",
+      "name": "claude-haiku-5-5",
+      "version": "2",
+      "publisher": "Anthropic",
+      "family": "haiku",
+      "capabilities": {
+        "chatCompletion": true
+      },
+      "regions": {
+        "eastus2": {
+          "lifecycle": "GA",
+          "isDefaultVersion": true,
+          "capabilities": {
+            "hostedOn": "azure"
+          },
+          "deprecationDate": "2027-09-29T00:00:00Z",
+          "skus": [
+            {
+              "name": "GlobalStandard",
+              "usageName": "AIServices.GlobalStandard.claude-haiku-5-5.Azure",
+              "capacity": {
+                "maximum": 1000000,
+                "default": 10
+              },
+              "deprecationDate": "2027-09-29T00:00:00+00:00"
+            }
+          ]
+        },
+        "swedencentral": {
+          "lifecycle": "GA",
+          "isDefaultVersion": true,
+          "capabilities": {
+            "hostedOn": "azure"
+          },
+          "deprecationDate": "2027-09-29T00:00:00Z",
+          "skus": [
+            {
+              "name": "GlobalStandard",
+              "usageName": "AIServices.GlobalStandard.claude-haiku-5-5.Azure",
+              "capacity": {
+                "maximum": 1000000,
+                "default": 10
+              },
+              "deprecationDate": "2027-09-29T00:00:00+00:00"
             }
           ]
         }
@@ -131,7 +233,7 @@ window.EZDEPLOY_CATALOG_SNAPSHOT = Object.freeze({
           "capabilities": {
             "hostedOn": null
           },
-          "deprecationDate": "2026-10-19T00:00:00Z",
+          "deprecationDate": "2026-11-24T00:00:00Z",
           "skus": [
             {
               "name": "GlobalStandard",
@@ -140,7 +242,7 @@ window.EZDEPLOY_CATALOG_SNAPSHOT = Object.freeze({
                 "maximum": 1000000,
                 "default": 10
               },
-              "deprecationDate": "2026-10-19T00:00:00+00:00"
+              "deprecationDate": "2026-11-24T00:00:00+00:00"
             }
           ]
         },
@@ -150,7 +252,7 @@ window.EZDEPLOY_CATALOG_SNAPSHOT = Object.freeze({
           "capabilities": {
             "hostedOn": null
           },
-          "deprecationDate": "2026-10-19T00:00:00Z",
+          "deprecationDate": "2026-11-24T00:00:00Z",
           "skus": [
             {
               "name": "GlobalStandard",
@@ -159,7 +261,7 @@ window.EZDEPLOY_CATALOG_SNAPSHOT = Object.freeze({
                 "maximum": 1000000,
                 "default": 10
               },
-              "deprecationDate": "2026-10-19T00:00:00+00:00"
+              "deprecationDate": "2026-11-24T00:00:00+00:00"
             }
           ]
         }
@@ -370,6 +472,108 @@ window.EZDEPLOY_CATALOG_SNAPSHOT = Object.freeze({
       }
     },
     {
+      "key": "anthropic|claude-opus-5-5|1",
+      "format": "Anthropic",
+      "name": "claude-opus-5-5",
+      "version": "1",
+      "publisher": "Anthropic",
+      "family": "opus",
+      "capabilities": {
+        "chatCompletion": true
+      },
+      "regions": {
+        "eastus2": {
+          "lifecycle": "GA",
+          "isDefaultVersion": false,
+          "capabilities": {
+            "hostedOn": "anthropic"
+          },
+          "deprecationDate": "2027-09-18T00:00:00Z",
+          "skus": [
+            {
+              "name": "GlobalStandard",
+              "usageName": "AIServices.GlobalStandard.claude-opus-5-5",
+              "capacity": {
+                "maximum": 1000000,
+                "default": 10
+              },
+              "deprecationDate": "2027-09-18T00:00:00+00:00"
+            }
+          ]
+        },
+        "swedencentral": {
+          "lifecycle": "GA",
+          "isDefaultVersion": false,
+          "capabilities": {
+            "hostedOn": "anthropic"
+          },
+          "deprecationDate": "2027-09-18T00:00:00Z",
+          "skus": [
+            {
+              "name": "GlobalStandard",
+              "usageName": "AIServices.GlobalStandard.claude-opus-5-5",
+              "capacity": {
+                "maximum": 1000000,
+                "default": 10
+              },
+              "deprecationDate": "2027-09-18T00:00:00+00:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "anthropic|claude-opus-5-5|2",
+      "format": "Anthropic",
+      "name": "claude-opus-5-5",
+      "version": "2",
+      "publisher": "Anthropic",
+      "family": "opus",
+      "capabilities": {
+        "chatCompletion": true
+      },
+      "regions": {
+        "eastus2": {
+          "lifecycle": "GA",
+          "isDefaultVersion": true,
+          "capabilities": {
+            "hostedOn": "azure"
+          },
+          "deprecationDate": "2027-09-18T00:00:00Z",
+          "skus": [
+            {
+              "name": "GlobalStandard",
+              "usageName": "AIServices.GlobalStandard.claude-opus-5-5.Azure",
+              "capacity": {
+                "maximum": 1000000,
+                "default": 10
+              },
+              "deprecationDate": "2027-09-18T00:00:00+00:00"
+            }
+          ]
+        },
+        "swedencentral": {
+          "lifecycle": "GA",
+          "isDefaultVersion": true,
+          "capabilities": {
+            "hostedOn": "azure"
+          },
+          "deprecationDate": "2027-09-18T00:00:00Z",
+          "skus": [
+            {
+              "name": "GlobalStandard",
+              "usageName": "AIServices.GlobalStandard.claude-opus-5-5.Azure",
+              "capacity": {
+                "maximum": 1000000,
+                "default": 10
+              },
+              "deprecationDate": "2027-09-18T00:00:00+00:00"
+            }
+          ]
+        }
+      }
+    },
+    {
       "key": "anthropic|claude-opus-5|1",
       "format": "Anthropic",
       "name": "claude-opus-5",
@@ -488,7 +692,7 @@ window.EZDEPLOY_CATALOG_SNAPSHOT = Object.freeze({
           "capabilities": {
             "hostedOn": null
           },
-          "deprecationDate": "2026-10-19T00:00:00Z",
+          "deprecationDate": "2026-11-30T00:00:00Z",
           "skus": [
             {
               "name": "GlobalStandard",
@@ -497,7 +701,7 @@ window.EZDEPLOY_CATALOG_SNAPSHOT = Object.freeze({
                 "maximum": 1000000,
                 "default": 10
               },
-              "deprecationDate": "2026-10-19T00:00:00+00:00"
+              "deprecationDate": "2026-11-30T00:00:00+00:00"
             }
           ]
         },
@@ -507,7 +711,7 @@ window.EZDEPLOY_CATALOG_SNAPSHOT = Object.freeze({
           "capabilities": {
             "hostedOn": null
           },
-          "deprecationDate": "2026-10-19T00:00:00Z",
+          "deprecationDate": "2026-11-30T00:00:00Z",
           "skus": [
             {
               "name": "GlobalStandard",
@@ -516,7 +720,7 @@ window.EZDEPLOY_CATALOG_SNAPSHOT = Object.freeze({
                 "maximum": 1000000,
                 "default": 10
               },
-              "deprecationDate": "2026-10-19T00:00:00+00:00"
+              "deprecationDate": "2026-11-30T00:00:00+00:00"
             }
           ]
         }
@@ -568,6 +772,108 @@ window.EZDEPLOY_CATALOG_SNAPSHOT = Object.freeze({
                 "default": 10
               },
               "deprecationDate": "2027-02-10T00:00:00+00:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "anthropic|claude-sonnet-5-5|1",
+      "format": "Anthropic",
+      "name": "claude-sonnet-5-5",
+      "version": "1",
+      "publisher": "Anthropic",
+      "family": "sonnet",
+      "capabilities": {
+        "chatCompletion": true
+      },
+      "regions": {
+        "eastus2": {
+          "lifecycle": "GA",
+          "isDefaultVersion": false,
+          "capabilities": {
+            "hostedOn": "anthropic"
+          },
+          "deprecationDate": "2027-09-29T00:00:00Z",
+          "skus": [
+            {
+              "name": "GlobalStandard",
+              "usageName": "AIServices.GlobalStandard.claude-sonnet-5-5",
+              "capacity": {
+                "maximum": 1000000,
+                "default": 10
+              },
+              "deprecationDate": "2027-09-29T00:00:00+00:00"
+            }
+          ]
+        },
+        "swedencentral": {
+          "lifecycle": "GA",
+          "isDefaultVersion": false,
+          "capabilities": {
+            "hostedOn": "anthropic"
+          },
+          "deprecationDate": "2027-09-29T00:00:00Z",
+          "skus": [
+            {
+              "name": "GlobalStandard",
+              "usageName": "AIServices.GlobalStandard.claude-sonnet-5-5",
+              "capacity": {
+                "maximum": 1000000,
+                "default": 10
+              },
+              "deprecationDate": "2027-09-29T00:00:00+00:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "anthropic|claude-sonnet-5-5|2",
+      "format": "Anthropic",
+      "name": "claude-sonnet-5-5",
+      "version": "2",
+      "publisher": "Anthropic",
+      "family": "sonnet",
+      "capabilities": {
+        "chatCompletion": true
+      },
+      "regions": {
+        "eastus2": {
+          "lifecycle": "GA",
+          "isDefaultVersion": true,
+          "capabilities": {
+            "hostedOn": "azure"
+          },
+          "deprecationDate": "2027-09-29T00:00:00Z",
+          "skus": [
+            {
+              "name": "GlobalStandard",
+              "usageName": "AIServices.GlobalStandard.claude-sonnet-5-5.Azure",
+              "capacity": {
+                "maximum": 1000000,
+                "default": 10
+              },
+              "deprecationDate": "2027-09-29T00:00:00+00:00"
+            }
+          ]
+        },
+        "swedencentral": {
+          "lifecycle": "GA",
+          "isDefaultVersion": true,
+          "capabilities": {
+            "hostedOn": "azure"
+          },
+          "deprecationDate": "2027-09-29T00:00:00Z",
+          "skus": [
+            {
+              "name": "GlobalStandard",
+              "usageName": "AIServices.GlobalStandard.claude-sonnet-5-5.Azure",
+              "capacity": {
+                "maximum": 1000000,
+                "default": 10
+              },
+              "deprecationDate": "2027-09-29T00:00:00+00:00"
             }
           ]
         }
