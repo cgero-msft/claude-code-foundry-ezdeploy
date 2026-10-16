@@ -18,8 +18,8 @@ The check scripts only **read** information. They don't create, change, or delet
 
 | Area | Requirement |
 |---|---|
-| Azure subscription | A paid subscription with an **active pay-as-you-go billing method**, billed in a country or region where Anthropic sells Claude models. |
-| Not supported | Cloud Solution Provider (CSP) subscriptions, free trial, student, startup-credit, and credit-only sponsored subscriptions, and Enterprise Agreements in South Korea. |
+| Azure subscription | A **pay-as-you-go, Enterprise Agreement (EA), or Microsoft Customer Agreement (MCA)** subscription, billed in a country or region where Anthropic sells Claude models. Some credit-based subscriptions require an active pay-as-you-go payment method. |
+| Not supported | Cloud Solution Provider (CSP), free trial, student, Azure Pass, startup-credit, and credit-only sponsored subscriptions without an active pay-as-you-go payment method, and Enterprise Agreements in South Korea. |
 | Permissions | **Contributor** or **Owner** on the subscription, or on the resource group you'll use. You also need to be allowed to purchase Azure Marketplace offers. |
 | Model access | **Cognitive Services User** or **Foundry User** on the Foundry resource. Alternatively, have permission to assign roles and the workshop will assign it for you. |
 | Region and quota | Claude Global Standard quota in **East US 2** for **Claude Sonnet 5.5**, **Claude Haiku 5.5**, and **Claude Opus 5.5**. |
@@ -154,7 +154,7 @@ The Azure check works the same way on every platform. The easiest place to run i
 
 | Check | What it means | What to do |
 |---|---|---|
-| Subscription type / Spending limit | The subscription can't buy Claude models. | Use an eligible pay-as-you-go, Enterprise Agreement, or Microsoft Customer Agreement subscription. Ask your Azure administrator. |
+| Subscription type / Spending limit | The subscription can't buy Claude models. | Use a supported pay-as-you-go, Enterprise Agreement, or Microsoft Customer Agreement subscription in an eligible billing country. CSP, trial, student, Azure Pass, and credit-only subscriptions aren't supported; Enterprise Agreements in South Korea are also excluded. See **What you need** above or ask your Azure administrator. |
 | Deployment permissions | You can't create the Foundry resources. | Ask for **Contributor** on the subscription or on a resource group created for you. If you get a resource group, rerun the check with that group: `bash check-azure.sh --resource-group <your-resource-group>`. |
 | Resource provider | `Microsoft.CognitiveServices` isn't registered and you can't register it. | Ask a subscription Owner or Contributor to run `az provider register -n Microsoft.CognitiveServices`. |
 | Model access role | You have no inference role and can't assign one. | Ask an Owner or User Access Administrator to grant you **Cognitive Services User** (or **Foundry User**) on your resource group. |
