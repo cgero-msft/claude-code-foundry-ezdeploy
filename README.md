@@ -54,6 +54,7 @@ flowchart LR
 | `tests/catalog-generator-regression.js` | Test catalog normalization and last-known-good failure behavior. |
 | `tests/wizard-regression.js` | Test wizard validation and launcher generation. |
 | `tests/engine-regression.sh` | Test engine behavior with fixtures and a fake Azure CLI. |
+| `workshop/` | A 60-minute guided workshop: pre-work checks, participant guide, facilitator guide, and troubleshooting sheet. Start with [`workshop/pre-work/README.md`](workshop/pre-work/README.md). |
 
 The wizard-generated launcher and `scripts/ezdeploy-engine.sh` must be uploaded to the same Cloud Shell folder.
 
